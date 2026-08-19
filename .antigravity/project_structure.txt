@@ -1,0 +1,42 @@
+/project_root
+│
+├── .antigravity/            # Chứa các file cấu hình cho AI Agent
+│   ├── agent_rules.md
+│   ├── developer_skill.md
+│   ├── workflow.md
+│   └── project_structure.txt
+│
+├── backups/                 # Chứa các file sao lưu Database định kỳ (.bak, .sql)
+│
+├── reports/                 # Chứa các file báo cáo kết xuất (PDF, Excel, CSV)
+│
+├── database/                # Quản lý cấu trúc và truy vấn Cơ sở dữ liệu
+│   ├── migrations/          # Các file lịch sử thay đổi cấu trúc bảng
+│   ├── schema.sql           # File gốc chứa định nghĩa Table, Primary Key, Foreign Key
+│   └── queries/             # Tách riêng các hàm truy vấn phức tạp
+│
+├── src/                     # Toàn bộ mã nguồn ứng dụng
+│   │
+│   ├── assets/              # Hình ảnh, icon, font chữ tĩnh
+│   │
+│   ├── styles/              # Quản lý giao diện Global
+│   │   └── global.css       # Chứa TOÀN BỘ biến màu sắc, kích thước (Tuyệt đối không fix cứng ở file khác)
+│   │
+│   ├── components/          # Các UI Component độc lập, tái sử dụng (Blackbox Modularity)
+│   │   ├── common/          # Component dùng chung (Button.tsx, Input.tsx, Modal.tsx)
+│   │   └── layout/          # Component bố cục (Header.tsx, Sidebar.tsx)
+│   │
+│   ├── pages/               # Lắp ráp các Component thành trang hoàn chỉnh (Home.tsx, Dashboard.tsx)
+│   │
+│   ├── services/            # Tách biệt code gọi API hoặc thao tác với Database
+│   │
+│   ├── hooks/               # Các Custom Hooks xử lý logic trạng thái (state)
+│   │
+│   ├── utils/               # Các hàm hỗ trợ định dạng dữ liệu, tính toán (Helpers)
+│   │
+│   ├── App.tsx              # Component gốc quản lý Routing (Điều hướng trang)
+│   └── main.tsx             # [TỐI GIẢN] Chỉ dùng để render App vào DOM, KHÔNG chứa logic nghiệp vụ
+│
+├── .gitignore               # Khai báo các file không đưa lên Git
+├── package.json             # Quản lý thư viện phụ thuộc (Dependencies)
+└── README.md                # Tài liệu mô tả nhanh về dự án

@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  fullName     String   @map("full_name")
+  role         String   @default("teacher") // enum('admin','teacher')
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  requests          Request[]          @relation("UserRequests")
+  decidedRequests   Request[]          @relation("DecidedRequests")
+  stockTransactions StockTransaction[] @relation("UserStockTransactions")
+
+  @@map("users")
+}
+
+model Item {
+  id        String   @id @default(uuid())
+  name      String
+  category  String   // code của category, vd 'hoc_tap', 'ngoai_khoa', ...
+  unit      String   // cái, hộp, cuộn, gói, mét, ram, bộ...
+  quantity  Int      // tồn kho hiện tại (số thật)
+  minStock  Int      @map("min_stock") // ngưỡng cảnh báo sắp hết
+  price     Float?   // đơn giá tham khảo
+  location  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  requestItems      RequestItem[]
+  purchaseProposals PurchaseProposal[]
+  stockTransactions StockTransaction[]
+
+  @@map("items")
+}
+
+model Request {
+  id           String    @id @default(uuid())
+  requesterId  String    @map("requester_id")
+  requester    User      @relation("UserRequests", fields: [requesterId], references: [id])
+  purpose      String    // chủ đề / hoạt động, vd "Trang trí góc Mùa xuân"
+  neededDate   DateTime  @map("needed_date")
+  note         String?
+  status       String    @default("pending") // enum('pending','approved','rejected')
+  createdAt    DateTime  @default(now()) @map("created_at")
+  decidedAt    DateTime? @map("decided_at")
+  decidedBy    String?   @map("decided_by")
+  decidedByUser User?    @relation("DecidedRequests", fields: [decidedBy], references: [id])
+  rejectReason String?   @map("reject_reason")
+
+  requestItems      RequestItem[]
+  purchaseProposals PurchaseProposal[]
+
+  @@map("requests")
+}
+
+model RequestItem {
+  id           String  @id @default(uuid())
+  requestId    String  @map("request_id")
+  request      Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId       String  @map("item_id")
+  item         Item    @relation(fields: [itemId], references: [id])
+  requestedQty Int     @map("requested_qty") // số lượng giáo viên xin
+  allocatedQty Int     @map("allocated_qty") // số được cấp từ kho (tính ngay khi tạo yêu cầu)
+  shortfallQty Int     @map("shortfall_qty") // số còn thiếu = requested_qty - allocated_qty
+  status       String  @default("approved")  // 'approved' | 'rejected'
+
+  @@map("request_items")
+}
+
+model PurchaseProposal {
+  id              String    @id @default(uuid())
+  itemId          String    @map("item_id")
+  item            Item      @relation(fields: [itemId], references: [id])
+  qty             Int
+  sourceRequestId String    @map("source_request_id")
+  sourceRequest   Request   @relation(fields: [sourceRequestId], references: [id])
+  status          String    @default("can_mua") // enum('can_mua','da_dat_mua','da_nhap_kho')
+  createdAt       DateTime  @default(now()) @map("created_at")
+  receivedQty     Int       @default(0) @map("received_qty")
+  resolvedAt      DateTime? @map("resolved_at")
+
+  @@map("purchase_proposals")
+}
+
+model StockTransaction {
+  id             String   @id @default(uuid())
+  itemId         String   @map("item_id")
+  item           Item     @relation(fields: [itemId], references: [id])
+  type           String   // enum('nhap_kho','xuat_kho_duyet_yc','dieu_chinh')
+  quantityChange Int      @map("quantity_change") // có thể âm hoặc dương
+  referenceId    String?  @map("reference_id") // request_id hoặc purchase_proposal_id liên quan
+  performedBy    String   @map("performed_by")
+  performedUser  User     @relation("UserStockTransactions", fields: [performedBy], references: [id])
+  createdAt      DateTime @default(now()) @map("created_at")
+  note           String?
+
+  @@map("stock_transactions")
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  color       String   @default("emerald") // 'emerald', 'sky', 'purple', 'amber', 'rose', 'indigo'
+  isDefault   Boolean  @default(false) @map("is_default")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("categories")
+}
