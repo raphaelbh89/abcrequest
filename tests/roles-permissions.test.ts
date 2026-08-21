@@ -93,6 +93,11 @@ describe("Integration Tests: 4-Tier Role-Based Access Control", () => {
 
     assert.strictEqual(approvedRequest.status, "approved");
     assert.strictEqual(approvedRequest.decidedBy, manager!.id);
+
+    // Clean up
+    await prisma.requestItem.deleteMany({ where: { requestId: request.id } });
+    await prisma.request.delete({ where: { id: request.id } });
+    await prisma.item.delete({ where: { id: item.id } });
   });
 
   test("4. Kiểm tra Manager & Admin thấy được tất cả yêu cầu do Giáo viên tạo", async () => {
@@ -125,5 +130,8 @@ describe("Integration Tests: 4-Tier Role-Based Access Control", () => {
 
     assert.ok(foundByManager, "Manager phải thấy được phiếu do giáo viên tạo");
     assert.strictEqual(foundByManager.id, req.id);
+
+    // Clean up
+    await prisma.request.delete({ where: { id: req.id } });
   });
 });

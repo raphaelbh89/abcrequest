@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npx tsx --test tests/allocation.test.ts tests/flow.test.ts tests/ai-suggestions.test.ts tests/export.test.ts tests/stock-in-price.test.ts tests/reject-item.test.ts tests/notifications-password.test.ts tests/available-stock.test.ts tests/settings.test.ts tests/roles-permissions.test.ts tests/load-stress.test.ts tests/internal-search.test.ts tests/external-search.test.ts tests/external-proposals-flow.test.ts tests/search-accuracy-40.test.ts"
+    "test": "npx tsx --test tests/allocation.test.ts tests/flow.test.ts tests/ai-suggestions.test.ts tests/export.test.ts tests/stock-in-price.test.ts tests/reject-item.test.ts tests/notifications-password.test.ts tests/available-stock.test.ts tests/settings.test.ts tests/roles-permissions.test.ts tests/load-stress.test.ts tests/internal-search.test.ts tests/external-search.test.ts tests/external-proposals-flow.test.ts tests/search-accuracy-40.test.ts tests/excel-import.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -19,7 +19,9 @@
     "exceljs": "^4.4.0",
     "framer-motion": "^13.1.0",
     "jose": "^6.2.9",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.32.0",
+    "mammoth": "^1.12.1",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -28,6 +30,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
+    "@types/jszip": "^3.4.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

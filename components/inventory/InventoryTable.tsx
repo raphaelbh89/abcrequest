@@ -16,10 +16,12 @@ import {
   CheckCircle2,
   Sparkles,
   TrendingDown,
-  Ban
+  Ban,
+  FileSpreadsheet,
 } from "lucide-react";
 import { ItemModal, ItemData } from "./ItemModal";
 import { StockInModal } from "./StockInModal";
+import { ImportExcelModal } from "./ImportExcelModal";
 import { useSettings } from "@/components/settings/SettingsProvider";
 
 interface UserInfo {
@@ -49,6 +51,8 @@ export function InventoryTable({ user }: InventoryTableProps) {
 
   const [isStockInModalOpen, setIsStockInModalOpen] = useState(false);
   const [stockInItem, setStockInItem] = useState<ItemData | null>(null);
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<ItemData | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -192,13 +196,25 @@ export function InventoryTable({ user }: InventoryTableProps) {
             </button>
 
             {isAdmin && (
-              <button
-                onClick={handleOpenAddModal}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-semibold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Thêm đồ dùng mới</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-300 hover:border-emerald-500 text-slate-700 hover:text-emerald-700 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
+                  title="Nhập danh sách đồ dùng hàng loạt từ file Word (.docx) hoặc Excel (.xlsx, .csv)"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Import từ File</span>
+                </button>
+
+                <button
+                  onClick={handleOpenAddModal}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-semibold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Thêm đồ dùng mới</span>
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -460,6 +476,15 @@ export function InventoryTable({ user }: InventoryTableProps) {
           </div>
         </div>
       )}
+
+      {/* Excel Inventory Import Modal */}
+      <ImportExcelModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => {
+          fetchItems();
+        }}
+      />
     </div>
   );
 }
