@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Bỏ qua database SQLite và các file lock
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+prisma/*.db
+prisma/*.db-shm
+prisma/*.db-wal
+
+# Bỏ qua file môi trường
+.env
+.env*.local
