@@ -52,3 +52,7 @@ prisma/*.db-wal
 # Bỏ qua file môi trường
 .env
 .env*.local
+
+prisma/*.db-shm
+prisma/*.db-wal
+prisma/*.db
