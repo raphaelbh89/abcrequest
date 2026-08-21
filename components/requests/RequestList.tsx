@@ -103,7 +103,7 @@ export function RequestList({ user }: RequestListProps) {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (user.role !== "admin") {
+      if (!["admin", "manager", "stocker"].includes(user.role)) {
         params.set("mine", "true");
       }
       if (statusTab && statusTab !== "all") {

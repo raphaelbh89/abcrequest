@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import {Boxes,
+import {
+  Boxes,
   Calendar,
   FileText,
   Plus,
@@ -17,8 +19,16 @@ import {Boxes,
   Layers,
   ExternalLink,
   Info,
+  UploadCloud,
+  Image as ImageIcon,
+  Edit3,
+  X,
 } from "lucide-react";
 import { ItemSearchSelector } from "@/components/common/ItemSearchSelector";
+import {
+  fileOrBlobToCompressedDataUrl,
+  handleClipboardImagePaste,
+} from "@/lib/image-utils";
 
 interface ItemAvailability {
   id: string;
@@ -28,6 +38,7 @@ interface ItemAvailability {
   quantity: number;
   pendingAllocatedQty: number;
   availableQuantity: number;
+  imageUrl?: string | null;
 }
 
 interface SelectedItem {
@@ -68,6 +79,7 @@ export function RequestForm() {
   const router = useRouter();
 
   // Form states
+  const [mounted, setMounted] = useState(false);
   const [purpose, setPurpose] = useState("");
   const [neededDate, setNeededDate] = useState("");
   const [note, setNote] = useState("");
@@ -84,6 +96,10 @@ export function RequestForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultRequest, setResultRequest] = useState<CreatedRequestResult | null>(null);
+
+  // Active item row for URL input modal or popover if needed
+  const [editingImageRowId, setEditingImageRowId] = useState<string | null>(null);
+  const [customImageUrlInput, setCustomImageUrlInput] = useState<string>("");
 
   // Fetch real-time items availability
   const fetchAvailability = async () => {
@@ -102,6 +118,7 @@ export function RequestForm() {
   };
 
   useEffect(() => {
+    setMounted(true);
     fetchAvailability();
     // Default needed date = 3 days from now
     const d = new Date();
@@ -162,7 +179,7 @@ export function RequestForm() {
     ]);
 
     setNotification(
-      `✨ Đã thêm đề xuất mặt hàng mới: "${proposal.name}" (Chưa có trong kho trường — Số lượng coi như 100% cần mua).`
+      `✨ Đã thêm đề xuất mặt hàng mới: "${proposal.name}" (Bạn có thể sửa tên, ĐVT hoặc tải/dán ảnh tùy thích).`
     );
     setTimeout(() => setNotification(null), 6000);
   };
@@ -177,6 +194,49 @@ export function RequestForm() {
         si.id === id ? { ...si, requestedQty: Math.max(1, qty) } : si
       )
     );
+  };
+
+  // Sửa tên món hàng
+  const handleNameChange = (id: string, name: string) => {
+    setSelectedItems((prev) =>
+      prev.map((si) => (si.id === id ? { ...si, name } : si))
+    );
+  };
+
+  // Sửa đơn vị tính (ĐVT)
+  const handleUnitChange = (id: string, unit: string) => {
+    setSelectedItems((prev) =>
+      prev.map((si) => (si.id === id ? { ...si, unit } : si))
+    );
+  };
+
+  // Cập nhật hình ảnh món hàng
+  const handleImageChange = (id: string, imageUrl: string) => {
+    setSelectedItems((prev) =>
+      prev.map((si) =>
+        si.id === id
+          ? { ...si, imageUrl, proposedImageUrl: imageUrl }
+          : si
+      )
+    );
+  };
+
+  // Xử lý file ảnh tải lên từ máy tính cho một dòng
+  const handleRowFileUpload = async (id: string, file: File) => {
+    try {
+      const dataUrl = await fileOrBlobToCompressedDataUrl(file);
+      handleImageChange(id, dataUrl);
+    } catch (err) {
+      console.error("Lỗi khi tải ảnh lên:", err);
+    }
+  };
+
+  // Xử lý dán ảnh từ Clipboard (Ctrl+V) vào dòng
+  const handleRowPaste = async (id: string, e: React.ClipboardEvent) => {
+    const pasted = await handleClipboardImagePaste(e);
+    if (pasted) {
+      handleImageChange(id, pasted);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -210,12 +270,15 @@ export function RequestForm() {
           note: note.trim() || null,
           items: selectedItems.map((si) => ({
             itemId: si.itemId || null,
+            name: si.name.trim(),
+            unit: si.unit.trim(),
+            imageUrl: si.imageUrl || si.proposedImageUrl || null,
             requestedQty: si.requestedQty,
             isNewItemProposal: Boolean(si.isNewItemProposal),
-            proposedName: si.isNewItemProposal ? si.name : null,
-            proposedUnit: si.isNewItemProposal ? si.unit : null,
+            proposedName: si.name.trim(),
+            proposedUnit: si.unit.trim(),
             proposedPrice: si.proposedPrice || null,
-            proposedImageUrl: si.proposedImageUrl || null,
+            proposedImageUrl: si.imageUrl || si.proposedImageUrl || null,
             proposedSourceUrl: si.proposedSourceUrl || null,
           })),
         }),
@@ -248,45 +311,47 @@ export function RequestForm() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">
-                Thông tin Yêu cầu Đồ dùng
+                Thông tin Phiếu yêu cầu Đồ dùng
               </h2>
-              <p className="text-xs text-slate-500">Nhập chủ đề hoạt động và thời gian dự kiến cần dùng</p>
+              <p className="text-xs text-slate-500">
+                Nhập chủ đề học tập, ngày cần dùng và chọn danh sách đồ dùng
+              </p>
             </div>
           </div>
 
           {error && (
-            <div className="p-4 text-xs sm:text-sm text-rose-700 bg-rose-50 rounded-xl border border-rose-200 flex items-center gap-3 font-medium">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-500" />
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 text-sm animate-in fade-in">
+              <AlertCircle className="w-5 h-5 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Chủ đề / Hoạt động <span className="text-rose-600">*</span>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Chủ đề / Hoạt động sử dụng <span className="text-rose-600">*</span>
               </label>
               <input
                 type="text"
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
-                placeholder="VD: Trang trí góc Mùa xuân, Hội thi vẽ tranh 8/3..."
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-medium"
+                placeholder="VD: Trang trí góc Mùa xuân, Bé làm quen tạo hình..."
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-medium"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                 Ngày cần sử dụng <span className="text-rose-600">*</span>
               </label>
-              <div className="relative group">
-                <Calendar className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 transition-colors pointer-events-none" />
+              <div className="relative">
+                <Calendar className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="date"
                   value={neededDate}
                   onChange={(e) => setNeededDate(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-medium"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-medium"
                   required
                 />
               </div>
@@ -294,23 +359,23 @@ export function RequestForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Ghi chú thêm (nếu có)
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+              Ghi chú thêm cho Ban Giám Hiệu & Thủ kho (Tùy chọn)
             </label>
-            <input
-              type="text"
+            <textarea
+              rows={2}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="VD: Nhận trước 9h sáng tại phòng Giáo viên..."
+              placeholder="Ghi chú chi tiết về thời gian nhận, quy cách đặc biệt..."
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-medium"
             />
           </div>
         </div>
 
-        {/* Notification Banner */}
+        {/* Dynamic Notification Banner */}
         {notification && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-emerald-800 font-semibold animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-2">
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-emerald-800 text-xs sm:text-sm animate-in fade-in shadow-xs">
+            <div className="flex items-center gap-2.5">
               <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{notification}</span>
             </div>
@@ -389,15 +454,16 @@ export function RequestForm() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-2xs">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3">Tên đồ dùng</th>
-                    <th className="px-4 py-3">Tồn khả dụng</th>
-                    <th className="px-4 py-3">Số lượng xin</th>
-                    <th className="px-4 py-3">Dự kiến Phân bổ & Mua sắm</th>
-                    <th className="px-4 py-3 text-right">Xóa</th>
+                    <th className="px-4 py-3.5 min-w-[280px]">Tên đồ dùng & Hình ảnh</th>
+                    <th className="px-3 py-3.5 text-center w-28 whitespace-nowrap">Tồn khả dụng</th>
+                    <th className="px-3 py-3.5 text-center w-28 whitespace-nowrap">Số lượng xin</th>
+                    <th className="px-3 py-3.5 text-center w-24 whitespace-nowrap">Đơn vị tính</th>
+                    <th className="px-4 py-3.5 min-w-[220px]">Dự kiến Phân bổ & Mua sắm</th>
+                    <th className="px-3 py-3.5 text-center w-14">Xóa</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -411,90 +477,183 @@ export function RequestForm() {
                       : si.requestedQty - allocatedPreview;
 
                     return (
-                      <tr key={si.id} className="hover:bg-slate-50/80">
+                      <tr
+                        key={si.id}
+                        onPaste={(e) => handleRowPaste(si.id, e)}
+                        className="hover:bg-slate-50/70 transition-colors"
+                      >
+                        {/* 1. Cột Tên đồ dùng & Ảnh (Có thể sửa tên & tải/dán ảnh) */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center shadow-2xs">
+                            {/* Khung Thumbnail - Click để chọn ảnh từ máy */}
+                            <label
+                              title="Bấm để tải ảnh từ máy tính hoặc nhấn Ctrl+V để dán ảnh"
+                              className="w-12 h-12 rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 relative group cursor-pointer shadow-2xs hover:border-emerald-500 transition-all"
+                            >
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleRowFileUpload(si.id, file);
+                                }}
+                              />
+
                               {si.imageUrl || si.proposedImageUrl ? (
-                                <img
-                                  src={si.imageUrl || si.proposedImageUrl || ""}
-                                  alt={si.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLElement).style.display = "none";
-                                  }}
-                                />
+                                <>
+                                  <img
+                                    src={si.imageUrl || si.proposedImageUrl || ""}
+                                    alt={si.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      (e.target as HTMLElement).style.display = "none";
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[8px] font-bold transition-opacity">
+                                    <UploadCloud className="w-3.5 h-3.5 mb-0.5" />
+                                    <span>Đổi ảnh</span>
+                                  </div>
+                                </>
                               ) : (
-                                <Boxes className="w-4.5 h-4.5 text-slate-400" />
+                                <div className="flex flex-col items-center justify-center text-slate-400 group-hover:text-emerald-600">
+                                  <UploadCloud className="w-4 h-4" />
+                                  <span className="text-[8px] font-bold mt-0.5">Tải ảnh</span>
+                                </div>
                               )}
-                            </div>
-                            <div className="space-y-0.5 min-w-0">
-                              <div className="font-bold text-slate-800 flex items-center gap-2 flex-wrap">
-                                <span>{si.name}</span>
+                            </label>
+
+                            {/* Tên đồ dùng (Có thể sửa trực tiếp) */}
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <input
+                                type="text"
+                                value={si.name}
+                                onChange={(e) => handleNameChange(si.id, e.target.value)}
+                                placeholder="Nhập/sửa tên đồ dùng..."
+                                className="w-full px-2.5 py-1 text-sm font-bold text-slate-800 bg-slate-50/70 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-emerald-500 rounded-lg focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                              />
+
+                              <div className="flex items-center gap-2 flex-wrap text-[11px]">
                                 {isNewProposal && (
-                                  <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
+                                  <span className="font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-md text-[10px]">
                                     ⭐ Đề xuất mới
                                   </span>
                                 )}
-                              </div>
-                              {isNewProposal && si.proposedSourceUrl && (
-                                <a
-                                  href={si.proposedSourceUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline"
+
+                                {/* Nút nhập URL ảnh nếu muốn */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (editingImageRowId === si.id) {
+                                      setEditingImageRowId(null);
+                                    } else {
+                                      setEditingImageRowId(si.id);
+                                      setCustomImageUrlInput(si.imageUrl || si.proposedImageUrl || "");
+                                    }
+                                  }}
+                                  className="text-slate-500 hover:text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer font-medium"
                                 >
-                                  <ExternalLink className="w-3 h-3" />
-                                  <span>Link nguồn tham khảo</span>
-                                </a>
+                                  <ImageIcon className="w-3 h-3" />
+                                  <span>{editingImageRowId === si.id ? "Đóng" : "Dán link ảnh"}</span>
+                                </button>
+
+                                {isNewProposal && si.proposedSourceUrl && (
+                                  <a
+                                    href={si.proposedSourceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-blue-600 hover:underline font-semibold"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                    <span>Nguồn</span>
+                                  </a>
+                                )}
+                              </div>
+
+                              {/* Input URL mở rộng khi bấm 'Dán link ảnh' */}
+                              {editingImageRowId === si.id && (
+                                <div className="flex items-center gap-1.5 pt-1 animate-in fade-in">
+                                  <input
+                                    type="url"
+                                    value={customImageUrlInput}
+                                    onChange={(e) => setCustomImageUrlInput(e.target.value)}
+                                    placeholder="Dán link ảnh (https://...)"
+                                    className="flex-1 px-2 py-1 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleImageChange(si.id, customImageUrlInput.trim());
+                                      setEditingImageRowId(null);
+                                    }}
+                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-xs font-bold transition-colors cursor-pointer"
+                                  >
+                                    Lưu
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+
+                        {/* 2. Cột Tồn khả dụng */}
+                        <td className="px-3 py-3 text-center whitespace-nowrap">
                           {isNewProposal ? (
                             <span className="text-xs font-semibold text-slate-400 italic">
                               Chưa có trong kho
                             </span>
                           ) : (
-                            <span className="font-black font-mono text-slate-700">
-                              {si.availableQuantity} {si.unit}
+                            <span className="font-bold font-mono text-slate-800 text-sm">
+                              {si.availableQuantity} <span className="text-xs font-normal text-slate-500">{si.unit}</span>
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              min="1"
-                              value={si.requestedQty}
-                              onChange={(e) =>
-                                handleQuantityChange(
-                                  si.id,
-                                  parseInt(e.target.value || "1", 10)
-                                )
-                              }
-                              className="w-20 px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-sm font-black text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                            />
-                            <span className="text-xs text-slate-500 font-medium">{si.unit}</span>
-                          </div>
+
+                        {/* 3. Cột Số lượng xin (Tách riêng) */}
+                        <td className="px-3 py-3 text-center whitespace-nowrap">
+                          <input
+                            type="number"
+                            min="1"
+                            value={si.requestedQty}
+                            onChange={(e) =>
+                              handleQuantityChange(
+                                si.id,
+                                parseInt(e.target.value || "1", 10)
+                              )
+                            }
+                            className="w-20 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-300 focus:border-emerald-500 rounded-xl text-center text-sm font-black font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                          />
                         </td>
+
+                        {/* 4. Cột Đơn vị tính (Tách riêng, có thể sửa) */}
+                        <td className="px-3 py-3 text-center whitespace-nowrap">
+                          <input
+                            type="text"
+                            value={si.unit}
+                            onChange={(e) => handleUnitChange(si.id, e.target.value)}
+                            title="Nhấp để chỉnh sửa ĐVT nếu cần"
+                            placeholder="ĐVT"
+                            className="w-20 px-2 py-1.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-300 focus:border-emerald-500 rounded-xl text-center text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                          />
+                        </td>
+
+                        {/* 5. Cột Dự kiến Phân bổ & Mua sắm */}
                         <td className="px-4 py-3">
                           <div className="space-y-1 text-xs">
                             {isNewProposal ? (
-                              <div className="flex items-center gap-1.5 text-indigo-700 font-bold">
-                                <PackageMinus className="w-4 h-4 text-indigo-600" />
-                                <span>100% Cần mua mới: {shortfallPreview} {si.unit} (Cần Admin duyệt & tạo)</span>
+                              <div className="inline-flex items-center gap-1.5 text-indigo-700 font-bold bg-indigo-50/80 px-2.5 py-1.5 rounded-xl border border-indigo-100">
+                                <PackageMinus className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                                <span>100% Cần mua mới: {shortfallPreview} {si.unit}</span>
                               </div>
                             ) : (
                               <>
                                 <div className="flex items-center gap-1.5 text-emerald-700 font-bold">
-                                  <PackageCheck className="w-4 h-4 text-emerald-600" />
+                                  <PackageCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                                   <span>Lấy từ kho: {allocatedPreview} {si.unit}</span>
                                 </div>
                                 {shortfallPreview > 0 && (
                                   <div className="flex items-center gap-1.5 text-amber-700 font-bold">
-                                    <PackageMinus className="w-4 h-4 text-amber-600" />
+                                    <PackageMinus className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                                     <span>Cần mua thêm: {shortfallPreview} {si.unit}</span>
                                   </div>
                                 )}
@@ -502,11 +661,14 @@ export function RequestForm() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right">
+
+                        {/* 6. Nút Xóa */}
+                        <td className="px-3 py-3 text-center">
                           <button
                             type="button"
                             onClick={() => handleRemoveItem(si.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                            title="Xóa món này"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -519,131 +681,141 @@ export function RequestForm() {
             </div>
           )}
 
-          {/* Form Actions */}
+          {/* Action Submit Button */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
             <button
               type="button"
               onClick={() => router.push("/requests")}
-              className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              className="px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
             >
               Hủy bỏ
             </button>
+
             <button
               type="submit"
               disabled={submitting || selectedItems.length === 0}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center gap-2 px-6 py-2.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 rounded-xl shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50 cursor-pointer"
             >
               {submitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Send className="w-4 h-4" />
               )}
-              <span>Gửi yêu cầu đồ dùng</span>
+              <span>Gửi Yêu cầu Đồ dùng ({selectedItems.length} món)</span>
             </button>
           </div>
         </div>
       </form>
 
-      {/* Result Modal displaying detailed allocation breakdown */}
-      {resultRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-2xl glass-dropdown rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-6 overflow-hidden animate-in fade-in zoom-in-95 duration-200 bg-white">
-            <div className="flex items-center gap-4 text-emerald-700">
-              <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-900">
-                  Gửi Yêu Cầu Thành Công!
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Chủ đề: <span className="font-bold text-slate-800">{resultRequest.purpose}</span>
-                </p>
-              </div>
-            </div>
+      {/* Success Popup Modal */}
+      {mounted &&
+        resultRequest &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
+              {/* Header */}
+              <div className="p-6 pb-4 flex items-start justify-between border-b border-slate-100 shrink-0 bg-gradient-to-r from-emerald-50/70 to-teal-50/50">
+                <div className="flex items-center gap-3.5">
+                  <div className="p-3 bg-emerald-100 text-emerald-700 rounded-2xl shrink-0 shadow-2xs">
+                    <CheckCircle2 className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+                      Gửi Phiếu Yêu cầu Thành công!
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+                      Chủ đề: <strong className="text-slate-800">"{resultRequest.purpose}"</strong>
+                    </p>
+                  </div>
+                </div>
 
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-800 space-y-1">
-              <div className="font-bold">ℹ️ Kết quả phân bổ kho tự động:</div>
-              <div>
-                Yêu cầu đang ở trạng thái <strong className="text-amber-700">Chờ duyệt (Pending)</strong>. Các món có sẵn đã được giữ chỗ tạm thời trong kho khả dụng. Các món đề xuất mới sẽ được Ban Giám Hiệu / Quản trị viên duyệt và khởi tạo.
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResultRequest(null);
+                    setSelectedItems([]);
+                    setPurpose("");
+                    setNote("");
+                  }}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-200/60 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-            </div>
 
-            {/* Allocation Details Table */}
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[11px] tracking-wider border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3">Mặt hàng</th>
-                    <th className="px-4 py-3">Số lượng xin</th>
-                    <th className="px-4 py-3">Cấp từ kho</th>
-                    <th className="px-4 py-3">Cần mua thêm</th>
-                    <th className="px-4 py-3">Trạng thái dòng</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {resultRequest.requestItems.map((ri) => {
-                    const itemName = ri.item?.name || ri.proposedName || "Món đề xuất mới";
-                    const itemUnit = ri.item?.unit || ri.proposedUnit || "cái";
-                    const isFullyAllocated = ri.shortfallQty === 0 && !ri.isNewItemProposal;
+              {/* Body */}
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200/80 rounded-2xl text-xs sm:text-sm text-emerald-800 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Phiếu đã được ghi nhận và gửi đến Ban Giám Hiệu để xét duyệt.</span>
+                </div>
 
-                    return (
-                      <tr key={ri.id} className="hover:bg-slate-50/80">
-                        <td className="px-4 py-3 font-bold text-slate-800">
-                          {itemName}
-                          {ri.isNewItemProposal && (
-                            <span className="ml-2 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-normal">
-                              Đề xuất mới
+                <div className="space-y-2">
+                  <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Chi tiết phân bổ tạm tính tự động:
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/50 divide-y divide-slate-100 overflow-hidden">
+                    {resultRequest.requestItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="p-3.5 flex items-center justify-between gap-3 text-xs sm:text-sm bg-white"
+                      >
+                        <div className="font-bold text-slate-800 flex items-center gap-2 min-w-0">
+                          <span className="truncate">
+                            {item.isNewItemProposal ? item.proposedName : item.item?.name}
+                          </span>
+                          {item.isNewItemProposal && (
+                            <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-bold shrink-0">
+                              ⭐ Đề xuất mới
                             </span>
                           )}
-                        </td>
-                        <td className="px-4 py-3 font-mono font-bold text-slate-700">
-                          {ri.requestedQty} {itemUnit}
-                        </td>
-                        <td className="px-4 py-3 font-mono font-black text-emerald-700">
-                          {ri.allocatedQty} {itemUnit}
-                        </td>
-                        <td className="px-4 py-3 font-mono font-black text-amber-700">
-                          {ri.shortfallQty} {itemUnit}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                              isFullyAllocated
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : ri.isNewItemProposal
-                                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                                : "bg-amber-50 text-amber-700 border-amber-200"
-                            }`}
-                          >
-                            {isFullyAllocated
-                              ? "Đủ hàng từ kho"
-                              : ri.isNewItemProposal
-                              ? "Đề xuất mua mới 100%"
-                              : `Thiếu ${ri.shortfallQty} ${itemUnit}`}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
 
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => {
-                  setResultRequest(null);
-                  router.push("/requests");
-                }}
-                className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
-              >
-                Xem danh sách yêu cầu
-              </button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-slate-500 font-medium">
+                            Xin: <strong>{item.requestedQty}</strong>
+                          </span>
+                          <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-xs">
+                            Kho cấp: {item.allocatedQty}
+                          </span>
+                          {item.shortfallQty > 0 && (
+                            <span className="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-xs">
+                              Cần mua: {item.shortfallQty}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-5 border-t border-slate-100 bg-slate-50/70 flex items-center justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResultRequest(null);
+                    setSelectedItems([]);
+                    setPurpose("");
+                    setNote("");
+                  }}
+                  className="px-4 py-2.5 text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-2xs"
+                >
+                  Tạo thêm phiếu khác
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/requests")}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                >
+                  <span>Xem danh sách phiếu yêu cầu</span>
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

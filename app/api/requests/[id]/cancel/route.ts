@@ -27,7 +27,8 @@ export const PATCH = requireAuth(async (_req: NextRequest, user, context?: any) 
       );
     }
 
-    if (request.requesterId !== user.id && user.role !== "admin") {
+    const isManagement = ["admin", "manager"].includes(user.role);
+    if (request.requesterId !== user.id && !isManagement) {
       return NextResponse.json(
         { error: "Bạn chỉ có thể hủy yêu cầu do chính mình tạo ra" },
         { status: 403 }

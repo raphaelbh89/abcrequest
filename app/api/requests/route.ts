@@ -11,7 +11,8 @@ export const GET = requireAuth(async (req: NextRequest, user) => {
     const status = searchParams.get("status");
 
     const whereClause: any = {};
-    if (mineOnly || user.role !== "admin") {
+    const isManagement = ["admin", "manager", "stocker"].includes(user.role);
+    if (mineOnly || !isManagement) {
       whereClause.requesterId = user.id;
     }
     if (status && status !== "all") {
@@ -151,6 +152,9 @@ export const POST = requireAuth(async (req: NextRequest, user) => {
             allocatedQty: allocation.allocatedQty,
             shortfallQty: allocation.shortfallQty,
             isNewItemProposal: false,
+            proposedName: reqItem.name && reqItem.name !== item.name ? String(reqItem.name).trim() : null,
+            proposedUnit: reqItem.unit && reqItem.unit !== item.unit ? String(reqItem.unit).trim() : null,
+            proposedImageUrl: reqItem.imageUrl && reqItem.imageUrl !== item.imageUrl ? String(reqItem.imageUrl).trim() : null,
           },
         });
       }

@@ -29,7 +29,7 @@ export default function PurchaseProposalsPage() {
       })
       .then((data) => {
         if (data?.user) {
-          if (data.user.role !== "admin") {
+          if (!["admin", "manager", "stocker"].includes(data.user.role)) {
             router.push("/dashboard");
             return;
           }

@@ -94,4 +94,36 @@ describe("Integration Tests: 4-Tier Role-Based Access Control", () => {
     assert.strictEqual(approvedRequest.status, "approved");
     assert.strictEqual(approvedRequest.decidedBy, manager!.id);
   });
+
+  test("4. Kiểm tra Manager & Admin thấy được tất cả yêu cầu do Giáo viên tạo", async () => {
+    const teacher = await prisma.user.findUnique({ where: { username: "giaovien" } });
+    const manager = await prisma.user.findUnique({ where: { username: "quanly" } });
+
+    // Giáo viên tạo yêu cầu
+    const req = await prisma.request.create({
+      data: {
+        requesterId: teacher!.id,
+        purpose: `Phiếu của giáo viên ${Date.now()}`,
+        neededDate: new Date(),
+        status: "pending",
+      },
+    });
+
+    // Manager truy vấn danh sách (không có điều kiện lọc theo requesterId riêng)
+    const isManagement = ["admin", "manager", "stocker"].includes(manager!.role);
+    assert.strictEqual(isManagement, true);
+
+    const whereClause: any = {};
+    if (!isManagement) {
+      whereClause.requesterId = manager!.id;
+    }
+    whereClause.id = req.id;
+
+    const foundByManager = await prisma.request.findFirst({
+      where: whereClause,
+    });
+
+    assert.ok(foundByManager, "Manager phải thấy được phiếu do giáo viên tạo");
+    assert.strictEqual(foundByManager.id, req.id);
+  });
 });

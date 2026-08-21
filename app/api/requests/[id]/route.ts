@@ -34,7 +34,8 @@ export const GET = requireAuth(async (_req: NextRequest, user, context?: any) =>
       return NextResponse.json({ error: "Yêu cầu không tồn tại" }, { status: 404 });
     }
 
-    if (user.role !== "admin" && request.requesterId !== user.id) {
+    const isManagement = ["admin", "manager", "stocker"].includes(user.role);
+    if (!isManagement && request.requesterId !== user.id) {
       return NextResponse.json(
         { error: "Bạn không có quyền xem phiếu yêu cầu này" },
         { status: 403 }

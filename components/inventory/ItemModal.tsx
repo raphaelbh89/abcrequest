@@ -1,10 +1,25 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Save, PackagePlus, Edit3, Sparkles, Image as ImageIcon } from "lucide-react";
+import {
+  X,
+  Loader2,
+  Save,
+  PackagePlus,
+  Edit3,
+  Sparkles,
+  Image as ImageIcon,
+  UploadCloud,
+  ClipboardPaste,
+  Trash2,
+} from "lucide-react";
 import { useSettings } from "@/components/settings/SettingsProvider";
 import { ItemSearchSelector } from "@/components/common/ItemSearchSelector";
+import {
+  fileOrBlobToCompressedDataUrl,
+  handleClipboardImagePaste,
+} from "@/lib/image-utils";
 
 export interface ItemData {
   id?: string;
@@ -39,9 +54,12 @@ export function ItemModal({ isOpen, onClose, onSuccess, initialData }: ItemModal
   const [location, setLocation] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showQuickSearch, setShowQuickSearch] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isEdit = Boolean(initialData?.id);
 
   useEffect(() => {
@@ -70,7 +88,34 @@ export function ItemModal({ isOpen, onClose, onSuccess, initialData }: ItemModal
     }
     setError(null);
     setShowQuickSearch(false);
+    setShowUrlInput(false);
   }, [initialData, isOpen, categories, settings.default_min_stock]);
+
+  // Xử lý khi chọn file từ máy tính
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingImage(true);
+      const dataUrl = await fileOrBlobToCompressedDataUrl(file);
+      setImageUrl(dataUrl);
+    } catch (err) {
+      console.error("Lỗi khi đọc file ảnh:", err);
+      setError("Không thể xử lý hình ảnh này. Vui lòng thử ảnh khác.");
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  // Xử lý khi Dán ảnh (Ctrl+V) vào form
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const pastedImage = await handleClipboardImagePaste(e);
+    if (pastedImage) {
+      setImageUrl(pastedImage);
+    }
+  };
 
   if (!isOpen || !mounted) return null;
 
@@ -122,7 +167,10 @@ export function ItemModal({ isOpen, onClose, onSuccess, initialData }: ItemModal
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      onPaste={handlePaste}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+    >
       <div className="w-full max-w-lg glass-dropdown rounded-3xl border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 bg-white max-h-[92vh] flex flex-col">
         
         {/* Header */}
@@ -146,6 +194,15 @@ export function ItemModal({ isOpen, onClose, onSuccess, initialData }: ItemModal
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Hidden File Input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+          accept="image/*"
+          className="hidden"
+        />
 
         {/* Body Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
@@ -210,35 +267,97 @@ export function ItemModal({ isOpen, onClose, onSuccess, initialData }: ItemModal
             />
           </div>
 
-          {/* Image URL with Preview */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Hình ảnh minh họa (URL)
-            </label>
+          {/* Section Hình ảnh với Upload + Paste + URL */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Hình ảnh món hàng (Tải lên / Paste / URL)
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowUrlInput(!showUrlInput)}
+                className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline cursor-pointer"
+              >
+                {showUrlInput ? "Ẩn nhập URL" : "Nhập link ảnh URL"}
+              </button>
+            </div>
+
+            {/* Khung tải ảnh & Preview */}
             <div className="flex items-center gap-3">
-              <div className="relative flex-1">
+              {/* Preview Box */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                title="Bấm để tải ảnh từ máy tính"
+                className="w-16 h-16 rounded-2xl border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/50 flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative shrink-0 group"
+              >
+                {uploadingImage ? (
+                  <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
+                ) : imageUrl ? (
+                  <>
+                    <img
+                      src={imageUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-bold">
+                      Đổi ảnh
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                    <span className="text-[9px] text-slate-500 font-bold mt-0.5">Tải ảnh</span>
+                  </>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex-1 space-y-1.5 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    <span>Tải từ máy tính</span>
+                  </button>
+
+                  {imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl("")}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Xóa ảnh</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                  <ClipboardPaste className="w-3 h-3 text-indigo-500 shrink-0" />
+                  <span>Mẹo: Bạn có thể nhấn <strong>Ctrl + V</strong> ở bất kỳ đâu để dán ảnh đã copy.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Optional Direct URL Input */}
+            {showUrlInput && (
+              <div className="relative pt-1 animate-in fade-in">
                 <ImageIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="url"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://... (URL ảnh sản phẩm)"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-medium"
+                  placeholder="Dán link ảnh trực tiếp (https://...)"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-medium"
                 />
               </div>
-              {imageUrl && (
-                <div className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden shrink-0 bg-slate-100 flex items-center justify-center shadow-2xs">
-                  <img
-                    src={imageUrl}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = "none";
-                    }}
-                  />
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
