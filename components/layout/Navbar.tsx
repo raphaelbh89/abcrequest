@@ -18,6 +18,10 @@ import {
   Settings,
   ChevronDown,
   Package,
+  PackageCheck,
+  Recycle,
+  Sparkles,
+  Layers,
 } from "lucide-react";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { ChangePasswordModal } from "@/components/users/ChangePasswordModal";
@@ -36,8 +40,14 @@ export function Navbar({ user }: NavbarProps) {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  
+  // Dropdown states
   const [isWarehouseDropdownOpen, setIsWarehouseDropdownOpen] = useState(false);
+  const [isOperationsDropdownOpen, setIsOperationsDropdownOpen] = useState(false);
+  
   const warehouseDropdownRef = useRef<HTMLDivElement>(null);
+  const operationsDropdownRef = useRef<HTMLDivElement>(null);
+  
   const { settings, renderLogoIcon } = useSettings();
 
   const handleLogout = async () => {
@@ -46,7 +56,7 @@ export function Navbar({ user }: NavbarProps) {
     router.refresh();
   };
 
-  // Close warehouse dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -55,12 +65,22 @@ export function Navbar({ user }: NavbarProps) {
       ) {
         setIsWarehouseDropdownOpen(false);
       }
+      if (
+        operationsDropdownRef.current &&
+        !operationsDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOperationsDropdownOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const isWarehouseActive = pathname.startsWith("/inventory");
+  const isWarehouseActive = pathname.startsWith("/inventory") || pathname.startsWith("/reuse");
+  const isOperationsActive =
+    pathname.startsWith("/requests") ||
+    pathname.startsWith("/disbursements") ||
+    pathname.startsWith("/purchase-proposals");
 
   const canViewRequests = !user || ["admin", "manager", "teacher"].includes(user.role);
   const canViewProposals = user && ["admin", "manager", "stocker"].includes(user.role);
@@ -109,7 +129,7 @@ export function Navbar({ user }: NavbarProps) {
             </Link>
 
             {/* Desktop Navigation Links */}
-            <nav className="hidden lg:flex items-center gap-1.5 ml-2 whitespace-nowrap">
+            <nav className="hidden lg:flex items-center gap-1.5 ml-3 whitespace-nowrap">
               {/* 1. Tổng quan */}
               <Link
                 href="/dashboard"
@@ -126,7 +146,7 @@ export function Navbar({ user }: NavbarProps) {
                 )}
               </Link>
 
-              {/* 2. Kho (Dropdown Submenu: Kho tồn + Lịch sử kho) */}
+              {/* 2. Nhóm Dropdown: Quản lý Kho & Tái sử dụng */}
               <div
                 ref={warehouseDropdownRef}
                 className="relative"
@@ -143,88 +163,168 @@ export function Navbar({ user }: NavbarProps) {
                   }`}
                 >
                   <Boxes className={`w-4 h-4 shrink-0 ${isWarehouseActive ? "text-emerald-600" : "text-slate-400"}`} />
-                  <span className="whitespace-nowrap">Kho</span>
+                  <span className="whitespace-nowrap">Kho đồ dùng</span>
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isWarehouseDropdownOpen ? "rotate-180 text-emerald-600" : "text-slate-400"}`} />
                   {isWarehouseActive && (
                     <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-gradient-to-r from-transparent via-emerald-600 to-transparent" />
                   )}
                 </button>
 
-                {/* Submenu Popover */}
+                {/* Dropdown Popover */}
                 {isWarehouseDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-56 p-1.5 glass-dropdown rounded-2xl border border-slate-200/90 shadow-xl z-50 bg-white/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                  <div className="absolute top-full left-0 mt-1 w-64 p-1.5 glass-dropdown rounded-2xl border border-slate-200/90 shadow-xl z-50 bg-white/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 space-y-1">
                     <Link
                       href="/inventory"
                       onClick={() => setIsWarehouseDropdownOpen(false)}
-                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                         pathname === "/inventory"
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold"
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold shadow-2xs"
                           : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
                       }`}
                     >
-                      <Package className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
+                      <div className="p-1.5 rounded-lg bg-emerald-100/70 text-emerald-700">
+                        <Package className="w-4 h-4 shrink-0" />
+                      </div>
                       <div className="flex flex-col">
-                        <span className="whitespace-nowrap font-bold">Danh sách kho tồn</span>
-                        <span className="text-xs text-slate-500 font-normal">Quản lý số lượng & trạng thái</span>
+                        <span className="whitespace-nowrap font-bold text-xs">Danh sách kho tồn</span>
+                        <span className="text-[11px] text-slate-400 font-normal">Mặt hàng & số lượng thật</span>
                       </div>
                     </Link>
 
                     <Link
                       href="/inventory/transactions"
                       onClick={() => setIsWarehouseDropdownOpen(false)}
-                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                         pathname === "/inventory/transactions"
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold"
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold shadow-2xs"
                           : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
                       }`}
                     >
-                      <History className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
+                      <div className="p-1.5 rounded-lg bg-slate-100 text-slate-600">
+                        <History className="w-4 h-4 shrink-0" />
+                      </div>
                       <div className="flex flex-col">
-                        <span className="whitespace-nowrap font-bold">Lịch sử xuất / nhập kho</span>
-                        <span className="text-xs text-slate-500 font-normal">Biến động kho chi tiết</span>
+                        <span className="whitespace-nowrap font-bold text-xs">Lịch sử xuất / nhập kho</span>
+                        <span className="text-[11px] text-slate-400 font-normal">Biến động kho chi tiết</span>
+                      </div>
+                    </Link>
+
+                    <Link
+                      href="/reuse"
+                      onClick={() => setIsWarehouseDropdownOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                        pathname === "/reuse"
+                          ? "bg-teal-50 text-teal-800 border border-teal-200/80 font-bold shadow-2xs"
+                          : "text-slate-700 hover:bg-teal-50/50 hover:text-teal-700"
+                      }`}
+                    >
+                      <div className="p-1.5 rounded-lg bg-teal-100 text-teal-700">
+                        <Recycle className="w-4 h-4 shrink-0" />
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5">
+                          <span className="whitespace-nowrap font-bold text-xs">Tái sử dụng đồ dùng</span>
+                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-teal-100 text-teal-800 rounded">Mới</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 font-normal">Thu hồi & tiết kiệm ngân sách</span>
                       </div>
                     </Link>
                   </div>
                 )}
               </div>
 
-              {/* 3. Yêu cầu đồ dùng (Cho Admin, Manager, Teacher) */}
-              {canViewRequests && (
-                <Link
-                  href="/requests"
-                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-200 ${
-                    pathname.startsWith("/requests")
+              {/* 3. Nhóm Dropdown: Yêu cầu & Cấp phát */}
+              <div
+                ref={operationsDropdownRef}
+                className="relative"
+                onMouseEnter={() => setIsOperationsDropdownOpen(true)}
+                onMouseLeave={() => setIsOperationsDropdownOpen(false)}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsOperationsDropdownOpen(!isOperationsDropdownOpen)}
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer ${
+                    isOperationsActive
                       ? "text-emerald-700 bg-emerald-50 shadow-xs border border-emerald-200"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
                   }`}
                 >
-                  <FileText className={`w-4 h-4 shrink-0 ${pathname.startsWith("/requests") ? "text-emerald-600" : "text-slate-400"}`} />
-                  <span className="whitespace-nowrap">Yêu cầu đồ dùng</span>
-                  {pathname.startsWith("/requests") && (
+                  <FileText className={`w-4 h-4 shrink-0 ${isOperationsActive ? "text-emerald-600" : "text-slate-400"}`} />
+                  <span className="whitespace-nowrap">Yêu cầu & Cấp phát</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOperationsDropdownOpen ? "rotate-180 text-emerald-600" : "text-slate-400"}`} />
+                  {isOperationsActive && (
                     <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-gradient-to-r from-transparent via-emerald-600 to-transparent" />
                   )}
-                </Link>
-              )}
+                </button>
 
-              {/* 4. Đề xuất mua (Cho Admin, Manager, Stocker) */}
-              {canViewProposals && (
-                <Link
-                  href="/purchase-proposals"
-                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-200 ${
-                    pathname.startsWith("/purchase-proposals")
-                      ? "text-emerald-700 bg-emerald-50 shadow-xs border border-emerald-200"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
-                  }`}
-                >
-                  <ShoppingCart className={`w-4 h-4 shrink-0 ${pathname.startsWith("/purchase-proposals") ? "text-emerald-600" : "text-slate-400"}`} />
-                  <span className="whitespace-nowrap">Đề xuất mua</span>
-                  {pathname.startsWith("/purchase-proposals") && (
-                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-gradient-to-r from-transparent via-emerald-600 to-transparent" />
-                  )}
-                </Link>
-              )}
+                {/* Dropdown Popover */}
+                {isOperationsDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-64 p-1.5 glass-dropdown rounded-2xl border border-slate-200/90 shadow-xl z-50 bg-white/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                    {canViewRequests && (
+                      <Link
+                        href="/requests"
+                        onClick={() => setIsOperationsDropdownOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                          pathname.startsWith("/requests")
+                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold shadow-2xs"
+                            : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
+                        }`}
+                      >
+                        <div className="p-1.5 rounded-lg bg-emerald-100/70 text-emerald-700">
+                          <FileText className="w-4 h-4 shrink-0" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="whitespace-nowrap font-bold text-xs">Yêu cầu đồ dùng</span>
+                          <span className="text-[11px] text-slate-400 font-normal">Tạo & duyệt phiếu giáo viên</span>
+                        </div>
+                      </Link>
+                    )}
 
-              {/* 5. Cài đặt (Chỉ dành cho Admin cấp cao) */}
+                    <Link
+                      href="/disbursements"
+                      onClick={() => setIsOperationsDropdownOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                        pathname.startsWith("/disbursements")
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold shadow-2xs"
+                          : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
+                      }`}
+                    >
+                      <div className="p-1.5 rounded-lg bg-teal-100 text-teal-700">
+                        <PackageCheck className="w-4 h-4 shrink-0" />
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5">
+                          <span className="whitespace-nowrap font-bold text-xs">Cấp phát đồ dùng</span>
+                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded">Mới</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 font-normal">Bàn giao & in phiếu nhận</span>
+                      </div>
+                    </Link>
+
+                    {canViewProposals && (
+                      <Link
+                        href="/purchase-proposals"
+                        onClick={() => setIsOperationsDropdownOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                          pathname.startsWith("/purchase-proposals")
+                            ? "bg-amber-50 text-amber-800 border border-amber-200/80 font-bold shadow-2xs"
+                            : "text-slate-700 hover:bg-amber-50/50 hover:text-amber-700"
+                        }`}
+                      >
+                        <div className="p-1.5 rounded-lg bg-amber-100 text-amber-700">
+                          <ShoppingCart className="w-4 h-4 shrink-0" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="whitespace-nowrap font-bold text-xs">Đề xuất mua sắm</span>
+                          <span className="text-[11px] text-slate-400 font-normal">Mua bổ sung khi kho thiếu</span>
+                        </div>
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Cài đặt (Chỉ dành cho Admin cấp cao) */}
               {canViewSettings && (
                 <Link
                   href="/admin/settings"
@@ -337,7 +437,7 @@ export function Navbar({ user }: NavbarProps) {
 
             {/* Mobile Kho Section */}
             <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Quản lý kho
+              Quản lý kho & Tái sử dụng
             </div>
             <Link
               href="/inventory"
@@ -346,7 +446,7 @@ export function Navbar({ user }: NavbarProps) {
                 pathname === "/inventory" ? "text-emerald-700 bg-emerald-50 border border-emerald-200" : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              <Boxes className="w-4 h-4 text-emerald-600" />
+              <Package className="w-4 h-4 text-emerald-600" />
               <span>Danh sách kho tồn</span>
             </Link>
 
@@ -361,29 +461,51 @@ export function Navbar({ user }: NavbarProps) {
               <span>Lịch sử xuất / nhập kho</span>
             </Link>
 
+            <Link
+              href="/reuse"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold pl-6 ${
+                pathname === "/reuse" ? "text-teal-700 bg-teal-50 border border-teal-200" : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <Recycle className="w-4 h-4 text-teal-600" />
+              <span>Tái sử dụng đồ dùng</span>
+            </Link>
+
+            {/* Mobile Yêu cầu & Cấp phát Section */}
+            <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Yêu cầu & Cấp phát
+            </div>
+
             {canViewRequests && (
-              <>
-                <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Hoạt động
-                </div>
-                <Link
-                  href="/requests"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold ${
-                    pathname.startsWith("/requests") ? "text-emerald-700 bg-emerald-50 border border-emerald-200" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <FileText className="w-4 h-4 text-emerald-600" />
-                  <span>Yêu cầu đồ dùng</span>
-                </Link>
-              </>
+              <Link
+                href="/requests"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold pl-6 ${
+                  pathname.startsWith("/requests") ? "text-emerald-700 bg-emerald-50 border border-emerald-200" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <FileText className="w-4 h-4 text-emerald-600" />
+                <span>Yêu cầu đồ dùng</span>
+              </Link>
             )}
+
+            <Link
+              href="/disbursements"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold pl-6 ${
+                pathname.startsWith("/disbursements") ? "text-emerald-700 bg-emerald-50 border border-emerald-200" : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <PackageCheck className="w-4 h-4 text-emerald-600" />
+              <span>Cấp phát đồ dùng</span>
+            </Link>
 
             {canViewProposals && (
               <Link
                 href="/purchase-proposals"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold ${
+                className={`flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold pl-6 ${
                   pathname.startsWith("/purchase-proposals") ? "text-emerald-700 bg-emerald-50 border border-emerald-200" : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
@@ -393,16 +515,21 @@ export function Navbar({ user }: NavbarProps) {
             )}
 
             {canViewSettings && (
-              <Link
-                href="/admin/settings"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold ${
-                  pathname.startsWith("/admin") ? "text-emerald-700 bg-emerald-50 border border-emerald-200" : "text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                <Settings className="w-4 h-4 text-emerald-600" />
-                <span>Cài đặt & Quản trị</span>
-              </Link>
+              <>
+                <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Hệ thống
+                </div>
+                <Link
+                  href="/admin/settings"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold ${
+                    pathname.startsWith("/admin") ? "text-emerald-700 bg-emerald-50 border border-emerald-200" : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <Settings className="w-4 h-4 text-emerald-600" />
+                  <span>Cài đặt & Quản trị</span>
+                </Link>
+              </>
             )}
           </nav>
         </div>

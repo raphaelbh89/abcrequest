@@ -12,24 +12,28 @@ model User {
   username     String   @unique
   passwordHash String   @map("password_hash")
   fullName     String   @map("full_name")
-  role         String   @default("teacher") // enum('admin','teacher')
+  role         String   @default("teacher") // enum('admin','manager','stocker','teacher')
   createdAt    DateTime @default(now()) @map("created_at")
 
-  requests          Request[]          @relation("UserRequests")
-  decidedRequests   Request[]          @relation("DecidedRequests")
-  stockTransactions StockTransaction[] @relation("UserStockTransactions")
+  requests               Request[]          @relation("UserRequests")
+  decidedRequests        Request[]          @relation("DecidedRequests")
+  stockTransactions      StockTransaction[] @relation("UserStockTransactions")
+  receivedDisbursements  Disbursement[]     @relation("RecipientDisbursements")
+  createdDisbursements   Disbursement[]     @relation("DisbursedByDisbursements")
+  createdReturns         ReuseReturn[]      @relation("ReturnerReuseReturns")
+  receivedReturns        ReuseReturn[]      @relation("ReceivedByReuseReturns")
 
   @@map("users")
 }
 
 model Item {
-  id        String   @id @default(uuid())
-  name      String
-  category  String   // code của category, vd 'hoc_tap', 'ngoai_khoa', ...
-  unit      String   // cái, hộp, cuộn, gói, mét, ram, bộ...
-  quantity  Int      // tồn kho hiện tại (số thật)
-  minStock  Int      @map("min_stock") // ngưỡng cảnh báo sắp hết
-  price     Float?   // đơn giá tham khảo
+  id             String   @id @default(uuid())
+  name           String
+  category       String   // code của category, vd 'hoc_tap', 'ngoai_khoa', ...
+  unit           String   // cái, hộp, cuộn, gói, mét, ram, bộ...
+  quantity       Int      // tồn kho hiện tại (số thật)
+  minStock       Int      @map("min_stock") // ngưỡng cảnh báo sắp hết
+  price          Float?   // đơn giá tham khảo
   location       String?
   imageUrl       String?  @map("image_url")
   nameNormalized String?  @default("") @map("name_normalized")
@@ -40,27 +44,31 @@ model Item {
   requestItems      RequestItem[]
   purchaseProposals PurchaseProposal[]
   stockTransactions StockTransaction[]
+  disbursementItems DisbursementItem[]
+  reuseReturns      ReuseReturn[]
 
   @@index([nameNormalized])
   @@map("items")
 }
 
 model Request {
-  id           String    @id @default(uuid())
-  requesterId  String    @map("requester_id")
-  requester    User      @relation("UserRequests", fields: [requesterId], references: [id])
-  purpose      String    // chủ đề / hoạt động, vd "Trang trí góc Mùa xuân"
-  neededDate   DateTime  @map("needed_date")
-  note         String?
-  status       String    @default("pending") // enum('pending','approved','rejected')
-  createdAt    DateTime  @default(now()) @map("created_at")
-  decidedAt    DateTime? @map("decided_at")
-  decidedBy    String?   @map("decided_by")
-  decidedByUser User?    @relation("DecidedRequests", fields: [decidedBy], references: [id])
-  rejectReason String?   @map("reject_reason")
+  id                 String    @id @default(uuid())
+  requesterId        String    @map("requester_id")
+  requester          User      @relation("UserRequests", fields: [requesterId], references: [id])
+  purpose            String    // chủ đề / hoạt động, vd "Trang trí góc Mùa xuân"
+  neededDate         DateTime  @map("needed_date")
+  note               String?
+  status             String    @default("pending") // enum('pending','approved','rejected')
+  disbursementStatus String    @default("cho_cap_phat") @map("disbursement_status") // enum('cho_cap_phat','da_cap_phat','cap_phat_mot_phan')
+  createdAt          DateTime  @default(now()) @map("created_at")
+  decidedAt          DateTime? @map("decided_at")
+  decidedBy          String?   @map("decided_by")
+  decidedByUser      User?     @relation("DecidedRequests", fields: [decidedBy], references: [id])
+  rejectReason       String?   @map("reject_reason")
 
   requestItems      RequestItem[]
   purchaseProposals PurchaseProposal[]
+  disbursements     Disbursement[]
 
   @@map("requests")
 }
@@ -106,15 +114,73 @@ model StockTransaction {
   id             String   @id @default(uuid())
   itemId         String   @map("item_id")
   item           Item     @relation(fields: [itemId], references: [id])
-  type           String   // enum('nhap_kho','xuat_kho_duyet_yc','dieu_chinh')
+  type           String   // enum('nhap_kho','xuat_kho_duyet_yc','xuat_kho_cap_phat','nhap_tai_su_dung','dieu_chinh')
   quantityChange Int      @map("quantity_change") // có thể âm hoặc dương
-  referenceId    String?  @map("reference_id") // request_id hoặc purchase_proposal_id liên quan
+  referenceId    String?  @map("reference_id") // request_id, disbursement_id hoặc reuse_return_id liên quan
   performedBy    String   @map("performed_by")
   performedUser  User     @relation("UserStockTransactions", fields: [performedBy], references: [id])
   createdAt      DateTime @default(now()) @map("created_at")
   note           String?
 
   @@map("stock_transactions")
+}
+
+model Disbursement {
+  id            String             @id @default(uuid())
+  code          String             @unique // Mã phiếu cấp phát, vd: CP-20260821-001
+  requestId     String             @map("request_id")
+  request       Request            @relation(fields: [requestId], references: [id])
+  recipientId   String             @map("recipient_id")
+  recipient     User               @relation("RecipientDisbursements", fields: [recipientId], references: [id])
+  disbursedBy   String             @map("disbursed_by")
+  disbursedUser User               @relation("DisbursedByDisbursements", fields: [disbursedBy], references: [id])
+  disbursedAt   DateTime           @default(now()) @map("disbursed_at")
+  status        String             @default("completed") // enum('completed','partial')
+  note          String?
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  items        DisbursementItem[]
+  reuseReturns ReuseReturn[]
+
+  @@map("disbursements")
+}
+
+model DisbursementItem {
+  id             String       @id @default(uuid())
+  disbursementId String       @map("disbursement_id")
+  disbursement   Disbursement @relation(fields: [disbursementId], references: [id], onDelete: Cascade)
+  itemId         String?      @map("item_id")
+  item           Item?        @relation(fields: [itemId], references: [id])
+  itemName       String       @map("item_name")
+  itemUnit       String       @map("item_unit")
+  disbursedQty   Int          @map("disbursed_qty")
+  returnedQty    Int          @default(0) @map("returned_qty")
+  isReusable     Boolean      @default(true) @map("is_reusable")
+
+  @@map("disbursement_items")
+}
+
+model ReuseReturn {
+  id               String        @id @default(uuid())
+  code             String        @unique // Mã phiếu tái sử dụng, vd: TSD-20260821-001
+  disbursementId   String?       @map("disbursement_id")
+  disbursement     Disbursement? @relation(fields: [disbursementId], references: [id])
+  itemId           String        @map("item_id")
+  item             Item          @relation(fields: [itemId], references: [id])
+  returnedQty      Int           @map("returned_qty")
+  condition        String        @default("tot") // enum('tot','kha','trung_binh')
+  returnerId       String?       @map("returner_id")
+  returnerUser     User?         @relation("ReturnerReuseReturns", fields: [returnerId], references: [id])
+  returnerName     String?       @map("returner_name") // Tên giáo viên / Lớp học
+  receivedBy       String        @map("received_by")
+  receivedUser     User          @relation("ReceivedByReuseReturns", fields: [receivedBy], references: [id])
+  returnedAt       DateTime      @default(now()) @map("returned_at")
+  estimatedSavings Float?        @map("estimated_savings")
+  note             String?
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  @@map("reuse_returns")
 }
 
 model SystemSetting {
