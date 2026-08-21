@@ -28,13 +28,15 @@ interface ProposalItem {
   createdAt: string;
   receivedQty: number;
   resolvedAt?: string | null;
-  item: {
+  proposedName?: string | null;
+  proposedUnit?: string | null;
+  item?: {
     id: string;
     name: string;
     unit: string;
     category: string;
     quantity: number;
-  };
+  } | null;
   sourceRequest: {
     id: string;
     purpose: string;
@@ -102,9 +104,12 @@ export function PurchaseProposalList() {
   const { success: toastSuccess, error: toastError } = useToast();
 
   const handleOrderProposal = async (proposal: ProposalItem) => {
+    const itemName = proposal.item?.name || proposal.proposedName || "Món đề xuất";
+    const itemUnit = proposal.item?.unit || proposal.proposedUnit || "cái";
+
     if (
       !confirm(
-        `Xác nhận đánh dấu "ĐÃ ĐẶT MUA" cho mặt hàng "${proposal.item.name}" (SL: ${proposal.qty} ${proposal.item.unit})?`
+        `Xác nhận đánh dấu "ĐÃ ĐẶT MUA" cho mặt hàng "${itemName}" (SL: ${proposal.qty} ${itemUnit})?`
       )
     ) {
       return;
@@ -244,10 +249,11 @@ export function PurchaseProposalList() {
           {groupedProposals.map((group) => {
             const isExpanded = expandedItemId === group.itemId;
             const hasPending = group.pendingQty > 0;
+            const itemUnit = group.item?.unit || "cái";
 
             return (
               <div
-                key={group.itemId}
+                key={group.itemId || `group-${group.item.name}`}
                 className="glass-panel rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden transition-all group bg-white/95"
               >
                 <div
@@ -265,7 +271,7 @@ export function PurchaseProposalList() {
                     </div>
 
                     <div className="text-xs text-slate-500 flex flex-wrap gap-x-5 gap-y-1 font-medium">
-                      <span>Tồn kho hiện tại: <strong className="text-emerald-700 font-mono font-bold">{group.item.quantity} {group.item.unit}</strong></span>
+                      <span>Tồn kho hiện tại: <strong className="text-emerald-700 font-mono font-bold">{group.item.quantity || 0} {itemUnit}</strong></span>
                       <span>Đóng góp từ: <strong className="text-slate-800">{group.proposals.length} phiếu yêu cầu</strong></span>
                     </div>
                   </div>
@@ -278,7 +284,7 @@ export function PurchaseProposalList() {
                           hasPending ? "text-amber-600" : "text-emerald-600"
                         }`}
                       >
-                        {group.pendingQty} <span className="text-xs font-normal text-slate-400">{group.item.unit}</span>
+                        {group.pendingQty} <span className="text-xs font-normal text-slate-400">{itemUnit}</span>
                       </div>
                     </div>
 
@@ -309,21 +315,23 @@ export function PurchaseProposalList() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {group.proposals.map((p) => {
-                            const formattedNeededDate = new Date(p.sourceRequest.neededDate).toLocaleDateString("vi-VN");
+                            const formattedNeededDate = p.sourceRequest?.neededDate
+                              ? new Date(p.sourceRequest.neededDate).toLocaleDateString("vi-VN")
+                              : "—";
 
                             return (
                               <tr key={p.id} className="hover:bg-slate-50/80">
                                 <td className="px-4 py-3 font-bold text-slate-800">
-                                  {p.sourceRequest.purpose}
+                                  {p.sourceRequest?.purpose || "Yêu cầu mua"}
                                 </td>
                                 <td className="px-4 py-3 text-slate-700 font-medium">
-                                  {p.sourceRequest.requester.fullName}
+                                  {p.sourceRequest?.requester?.fullName || "Giáo viên"}
                                 </td>
                                 <td className="px-4 py-3 text-slate-500 font-mono">
                                   {formattedNeededDate}
                                 </td>
                                 <td className="px-4 py-3 font-mono font-black text-amber-700">
-                                  {p.qty} {group.item.unit}
+                                  {p.qty} {itemUnit}
                                 </td>
                                 <td className="px-4 py-3">{getStatusBadge(p.status)}</td>
                                 <td className="px-4 py-3 text-right">
@@ -351,7 +359,7 @@ export function PurchaseProposalList() {
 
                                     {p.status === "da_nhap_kho" && (
                                       <span className="text-[11px] text-slate-500 font-mono font-medium">
-                                        Đã nhập +{p.receivedQty} {group.item.unit}
+                                        Đã nhập +{p.receivedQty} {itemUnit}
                                       </span>
                                     )}
                                   </div>
@@ -384,45 +392,67 @@ export function PurchaseProposalList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rawProposals.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-bold text-slate-800">
-                      {p.item.name}
-                    </td>
-                    <td className="px-4 py-3 text-slate-700 font-medium">
-                      {p.sourceRequest.purpose}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500">{p.sourceRequest.requester.fullName}</td>
-                    <td className="px-4 py-3 font-mono font-black text-amber-700">
-                      {p.qty} {p.item.unit}
-                    </td>
-                    <td className="px-4 py-3">{getStatusBadge(p.status)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {p.status === "can_mua" && (
-                          <button
-                            onClick={() => handleOrderProposal(p)}
-                            disabled={orderingId === p.id}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-xl transition-all cursor-pointer"
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>Đã đặt mua</span>
-                          </button>
-                        )}
+                {rawProposals.map((p) => {
+                  const itemName = p.item?.name || p.proposedName || "Món đề xuất";
+                  const itemUnit = p.item?.unit || p.proposedUnit || "cái";
+                  const isNewProposal = !p.itemId;
 
-                        {p.status !== "da_nhap_kho" && (
-                          <button
-                            onClick={() => setReceiveTarget(p)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all cursor-pointer"
-                          >
-                            <ArrowUpRight className="w-3.5 h-3.5" />
-                            <span>Đã nhập kho</span>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                  return (
+                    <tr key={p.id} className="hover:bg-slate-50/80">
+                      <td className="px-4 py-3 font-bold text-slate-800">
+                        <div className="flex items-center gap-2">
+                          <span>{itemName}</span>
+                          {isNewProposal && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-purple-50 text-purple-700 border border-purple-200">
+                              <Sparkles className="w-3 h-3" />
+                              <span>Đề xuất mới</span>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-700 font-medium">
+                        {p.sourceRequest?.purpose || "Yêu cầu mua sắm"}
+                      </td>
+                      <td className="px-4 py-3 text-slate-500">
+                        {p.sourceRequest?.requester?.fullName || "Giáo viên"}
+                      </td>
+                      <td className="px-4 py-3 font-mono font-black text-amber-700">
+                        {p.qty} {itemUnit}
+                      </td>
+                      <td className="px-4 py-3">{getStatusBadge(p.status)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {p.status === "can_mua" && (
+                            <button
+                              onClick={() => handleOrderProposal(p)}
+                              disabled={orderingId === p.id}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-xl transition-all cursor-pointer"
+                            >
+                              <ShoppingBag className="w-3.5 h-3.5" />
+                              <span>Đã đặt mua</span>
+                            </button>
+                          )}
+
+                          {p.status !== "da_nhap_kho" && (
+                            <button
+                              onClick={() => setReceiveTarget(p)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all cursor-pointer"
+                            >
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                              <span>Đã nhập kho</span>
+                            </button>
+                          )}
+
+                          {p.status === "da_nhap_kho" && (
+                            <span className="text-[11px] text-slate-500 font-mono font-medium">
+                              Đã nhập +{p.receivedQty} {itemUnit}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

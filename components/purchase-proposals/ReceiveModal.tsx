@@ -8,10 +8,12 @@ interface ProposalItemInfo {
   id: string;
   qty: number;
   status: string;
-  item: {
+  proposedName?: string | null;
+  proposedUnit?: string | null;
+  item?: {
     name: string;
     unit: string;
-  };
+  } | null;
   sourceRequest: {
     purpose: string;
     requester: {
@@ -41,12 +43,15 @@ export function ReceiveModal({ isOpen, onClose, onSuccess, proposal }: ReceiveMo
   useEffect(() => {
     if (proposal && isOpen) {
       setReceivedQty(proposal.qty);
-      setNote(`Nhập kho từ đề xuất mua (Chủ đề: "${proposal.sourceRequest.purpose}")`);
+      setNote(`Nhập kho từ đề xuất mua (Chủ đề: "${proposal.sourceRequest?.purpose || "Mua sắm"}")`);
       setError(null);
     }
   }, [proposal, isOpen]);
 
   if (!isOpen || !proposal || !mounted) return null;
+
+  const itemName = proposal.item?.name || proposal.proposedName || "Món đề xuất mới";
+  const itemUnit = proposal.item?.unit || proposal.proposedUnit || "cái";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,16 +123,16 @@ export function ReceiveModal({ isOpen, onClose, onSuccess, proposal }: ReceiveMo
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1">
             <div className="text-slate-500 font-medium">Mặt hàng nhập:</div>
-            <div className="font-bold text-slate-900 text-sm">{proposal.item.name}</div>
+            <div className="font-bold text-slate-900 text-sm">{itemName}</div>
             <div className="text-slate-500 flex items-center justify-between pt-1">
-              <span>Số lượng đề xuất: <strong className="text-slate-700 font-mono">{proposal.qty} {proposal.item.unit}</strong></span>
-              <span>Yêu cầu: <strong className="text-slate-700">{proposal.sourceRequest.purpose}</strong></span>
+              <span>Số lượng đề xuất: <strong className="text-slate-700 font-mono">{proposal.qty} {itemUnit}</strong></span>
+              <span>Yêu cầu: <strong className="text-slate-700">{proposal.sourceRequest?.purpose}</strong></span>
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Số lượng thực nhận ({proposal.item.unit}) <span className="text-rose-600">*</span>
+              Số lượng thực nhận ({itemUnit}) <span className="text-rose-600">*</span>
             </label>
             <input
               type="number"
