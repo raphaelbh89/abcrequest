@@ -251,8 +251,24 @@ export function InventoryTable({ user }: InventoryTableProps) {
                       className="hover:bg-slate-50/80 transition-colors group"
                     >
                       <td className="px-6 py-4">
-                        <div className="font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">
-                          {item.name}
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center shadow-2xs">
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <Boxes className="w-4.5 h-4.5 text-slate-400" />
+                            )}
+                          </div>
+                          <div className="font-bold text-slate-800 group-hover:text-emerald-700 transition-colors text-sm sm:text-base">
+                            {item.name}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-4">

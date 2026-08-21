@@ -88,12 +88,34 @@ export const POST = requireAuth(async (req: NextRequest, user) => {
 
       // 2. Process each requested item
       for (const reqItem of items) {
-        const itemId = reqItem.itemId;
         const requestedQty = parseInt(reqItem.requestedQty, 10);
-
-        if (!itemId || isNaN(requestedQty) || requestedQty <= 0) {
+        if (isNaN(requestedQty) || requestedQty <= 0) {
           continue;
         }
+
+        // Trường hợp A: Món đề xuất mới từ tìm kiếm mở rộng (Chưa có trong kho)
+        if (reqItem.isNewItemProposal) {
+          await tx.requestItem.create({
+            data: {
+              requestId: request.id,
+              itemId: null,
+              requestedQty,
+              allocatedQty: 0, // Chưa có trong kho
+              shortfallQty: requestedQty, // 100% cần mua
+              isNewItemProposal: true,
+              proposedName: String(reqItem.proposedName || reqItem.name || "Món mới đề xuất").trim(),
+              proposedUnit: String(reqItem.proposedUnit || reqItem.unit || "cái").trim(),
+              proposedPrice: reqItem.proposedPrice ? parseFloat(reqItem.proposedPrice) : null,
+              proposedImageUrl: reqItem.proposedImageUrl || null,
+              proposedSourceUrl: reqItem.proposedSourceUrl || null,
+            },
+          });
+          continue;
+        }
+
+        // Trường hợp B: Món đã có trong kho
+        const itemId = reqItem.itemId;
+        if (!itemId) continue;
 
         const item = await tx.item.findUnique({
           where: { id: itemId },
@@ -128,6 +150,7 @@ export const POST = requireAuth(async (req: NextRequest, user) => {
             requestedQty: allocation.requestedQty,
             allocatedQty: allocation.allocatedQty,
             shortfallQty: allocation.shortfallQty,
+            isNewItemProposal: false,
           },
         });
       }

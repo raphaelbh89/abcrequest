@@ -28,7 +28,7 @@ export const GET = requireRole(["admin", "manager", "stocker"], async (req: Next
       orderBy: { createdAt: "desc" },
     });
 
-    // Group proposals by itemId for aggregated view
+    // Group proposals by itemId / proposedName for aggregated view
     const groupedMap = new Map<string, {
       itemId: string;
       item: any;
@@ -38,17 +38,23 @@ export const GET = requireRole(["admin", "manager", "stocker"], async (req: Next
     }>();
 
     proposals.forEach((p) => {
-      if (!groupedMap.has(p.itemId)) {
-        groupedMap.set(p.itemId, {
-          itemId: p.itemId,
-          item: p.item,
+      const itemKey = p.itemId || `proposed-${p.proposedName}`;
+      if (!groupedMap.has(itemKey)) {
+        groupedMap.set(itemKey, {
+          itemId: p.itemId || "",
+          item: p.item || {
+            name: p.proposedName || "Món đề xuất mới",
+            unit: p.proposedUnit || "cái",
+            category: "hoc_tap",
+            quantity: 0,
+          },
           totalQty: 0,
           pendingQty: 0,
           proposals: [],
         });
       }
 
-      const group = groupedMap.get(p.itemId)!;
+      const group = groupedMap.get(itemKey)!;
       group.totalQty += p.qty;
       if (p.status !== "da_nhap_kho") {
         group.pendingQty += p.qty;

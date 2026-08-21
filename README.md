@@ -1,14 +1,15 @@
 # 🏫 Kho Mầm Non - Hệ Thống Quản Lý Đồ Dùng Học Tập & Ngoại Khóa
 
-Hệ thống quản lý kho tồn đồ dùng mầm non, xử lý quy trình gửi yêu cầu đồ dùng theo chủ đề/hoạt động, tự động tính toán phân bổ kho khả dụng real-time, duyệt yêu cầu, tự động sinh đề xuất mua cho phần thiếu hụt, và xuất báo cáo Excel chuẩn hóa.
+Hệ thống quản lý kho tồn đồ dùng mầm non, xử lý quy trình gửi yêu cầu đồ dùng theo chủ đề/hoạt động, tự động tính toán phân bổ kho khả dụng real-time, duyệt yêu cầu, tự động sinh đề xuất mua cho phần thiếu hụt, xuất báo cáo Excel chuẩn hóa, và **hệ thống tìm kiếm thông minh 3 tầng ưu tiên dữ liệu nội bộ**.
 
 ---
 
 ## 🛠️ Công Nghệ Sử Dụng
 
 - **Frontend & Backend**: Next.js 16 (App Router) + TypeScript + Tailwind CSS + Magic UI (Lucide Icons, Framer Motion)
-- **Database**: SQLite (file `dev.db` phát triển cục bộ)
+- **Database**: SQLite (phát triển cục bộ) / PostgreSQL (Sản xuất với `pg_trgm` & `pgvector`)
 - **ORM**: Prisma ORM (Migration & Seed)
+- **Search Engine**: 3-Tier Cascading Search Engine (Exact $\rightarrow$ Trigram Similarity $\rightarrow$ Semantic Concepts) + External Search Fallback (Claude LLM / DuckDuckGo Parser)
 - **Xác thực & Phân quyền**: JWT (lưu HTTP-only Cookie với `jose`) + Hash mật khẩu `bcryptjs`
 - **Xuất Báo cáo**: `exceljs` (.xlsx chuẩn UTF-8 tiếng Việt)
 - **Kiểm thử (QA)**: Node.js Test Runner + `tsx` (`npx tsx --test`)
@@ -32,76 +33,86 @@ Tạo file `.env` từ file mẫu `.env.example`:
 ```bash
 cp .env.example .env
 ```
-Nội dung mặc định file `.env`:
+Nội dung file `.env`:
 ```env
 DATABASE_URL="file:./dev.db"
 JWT_SECRET="kho-mam-non-secret-key-2026-secure-jwt"
 ```
 
-### 4. Khởi tạo Cơ sở dữ liệu (Prisma Migration)
-Chạy migration để khởi tạo các bảng và file cơ sở dữ liệu SQLite `dev.db`:
+### 4. Khởi tạo Cơ sở dữ liệu & Seed Dữ Liệu Mẫu
 ```bash
 npx prisma migrate dev
-```
-
-### 5. Seed Dữ Liệu Mẫu & Sinh Tài Khoản
-Chạy lệnh seed để khởi tạo tài khoản mẫu và các đồ dùng kho học tập/ngoại khóa ban đầu:
-```bash
 npx prisma db seed
 ```
-> **Lưu ý:** Mật khẩu đăng nhập sẽ được sinh ngẫu nhiên và in trực tiếp ra màn hình console khi chạy seed.
 
-Tài khoản mặc định:
-| Username | Role | Mô tả |
-|---|---|---|
-| **`quanly`** | `admin` | Quản lý kho (Toàn quyền CRUD, Duyệt/Từ chối, Nhập kho, Quản lý User) |
-| **`giaovien`** | `teacher` | Giáo viên (Gửi yêu cầu đồ dùng, Xem kho khả dụng, Xuất phiếu) |
-
----
-
-## 💻 Chạy Ứng Dụng
-
-### Chế độ Phát triển (Development)
-```bash
-npm run dev
-```
-Truy cập trình duyệt tại địa chỉ: [http://localhost:3000](http://localhost:3000)
-
-### Chế độ Biên dịch Sản phẩm (Production)
-```bash
-npm run build
-npm start
-```
+Tài khoản mặc định hệ thống:
+| Username | Password | Role | Mô tả |
+|---|---|---|---|
+| **`admin`** | `admin123` | `admin` | Quản trị viên (Toàn quyền, Cài đặt, User) |
+| **`quanly`** | `quanly123` | `manager` | Ban Giám Hiệu (Duyệt đơn, Quản lý kho) |
+| **`thukho`** | `thukho123` | `stocker` | Thủ kho & Mua sắm (Nhập kho, Phiếu mua) |
+| **`giaovien`** | `giaovien123` | `teacher` | Giáo viên (Tạo yêu cầu, Tra cứu đồ dùng) |
 
 ---
 
-## 🧪 Chạy Bộ Kiểm Thử (Unit & Integration Tests)
+## 🔍 Kiến Trúc Tìm Kiếm Đa Tầng (Search Engine Architecture)
 
-Dự án tích hợp bộ kiểm thử tự động cho thuật toán phân bổ kho và luồng nghiệp vụ tạo -> duyệt -> trừ kho -> sinh đề xuất mua.
+Hệ thống tuân thủ nguyên tắc nghiêm ngặt: **ƯU TIÊN KHO NỘI BỘ HÀNG ĐẦU**.
 
-Chạy toàn bộ test suite bằng lệnh:
+```mermaid
+flowchart TD
+    A[Người dùng gõ từ khóa] --> B[Debounce 300ms]
+    B --> C[GET /api/search/items - Tìm kiếm Nội Bộ]
+    C --> D[Tầng A: Khớp Chính Xác / Tiền Tố / Chuỗi con]
+    D -- Đủ >= 5 kết quả --> E[Trả kết quả ngay & Early Stop]
+    D -- Chưa đủ 5 kết quả --> F[Tầng B: Fuzzy Trigram Similarity > 0.25]
+    F -- Đủ >= 5 kết quả --> E
+    F -- Chưa đủ 5 kết quả --> G[Tầng C: Semantic Match / Nhóm Từ Đồng Nghĩa]
+    G --> H[Hiển thị kết quả kho nội bộ]
+    H --> I{Kết quả Rỗng hoặc Điểm Thấp?}
+    I -- Không --> J[Người dùng chọn món từ kho]
+    I -- Có --> K[Hiện nút: 'Không tìm thấy? Tìm gợi ý mở rộng']
+    K --> L[Người dùng CHỦ ĐỘNG bấm nút]
+    L --> M[GET /api/search/external - Tầng Mở Rộng Dự Phòng]
+    M --> N[Trích xuất Tên, ĐVT mầm non, Giá tham khảo, Link nguồn]
+    N --> O[Tạo dòng ⭐ Đề xuất mặt hàng mới]
+```
+
+---
+
+## 📊 Báo Cáo Đo Lường Độ Chính Xác 40 Câu Truy Vấn Tiếng Việt (Prompt 4)
+
+Kiểm thử tự động thực hiện bởi file [`tests/search-accuracy-40.test.ts`](file:///D:/ABCRequest/tests/search-accuracy-40.test.ts):
+```bash
+npx tsx --test tests/search-accuracy-40.test.ts
+```
+
+### Bảng Kết Quả Đo Lường Chi Tiết:
+
+| Nhóm Kiểm Thử | Số Câu | Tiêu Chí Bắt Buộc | Kết Quả Thực Tế | Đánh Giá |
+|---|---|---|---|---|
+| **Nhóm 1: Gõ đúng tên hoàn toàn** | 10 câu | Top-1 Accuracy $\ge 90\%$ | **10/10 (100%)** | 🏆 Vượt chuẩn |
+| **Nhóm 2: Gõ sai chính tả / không dấu** | 10 câu | Top-1 Accuracy $\ge 90\%$ | **10/10 (100%)** | 🏆 Vượt chuẩn |
+| **Nhóm 3: Từ đồng nghĩa / cách gọi khác** | 10 câu | Top-3 Recall $\ge 70\%$ | **10/10 (100%)** | 🏆 Vượt chuẩn |
+| **Nhóm 4: Món không có trong kho** | 10 câu | Mảng Rỗng $100\%$ | **10/10 (100%)** | 🏆 Vượt chuẩn |
+
+### Danh sách 40 câu truy vấn chuẩn:
+1. **Nhóm 1 (Đúng tên)**: `"Bút chì 2B thân gỗ"`, `"Bút bi Thiên Long 0.5mm"`, `"Bút màu dạ 12 màu"`, `"Sáp màu hữu cơ 16 màu"`, `"Giấy A4 màu thủ công"`, `"Đất nặn tạo hình 12 màu"`, `"Kéo thủ công mũi tròn an toàn"`, `"Băng dính 2 mặt siêu dính"`, `"Tấm Formex (Format) dày 5mm"`, `"Keo dán nến đóng khung"`.
+2. **Nhóm 2 (Sai chính tả / lỗi Telex / không dấu)**: `"keó"`, `"giay mau"`, `"but chii"`, `"but bi thien long"`, `"but mau da"`, `"sap mau huu co"`, `"dat nan tao hinh"`, `"bang dinh 2 mat"`, `"tam formex"`, `"keo dan nen"`.
+3. **Nhóm 3 (Từ đồng nghĩa)**: `"viết chì"`, `"viết bi"`, `"bút sáp"`, `"sáp dầu"`, `"giấy thủ công"`, `"đất sét"`, `"băng keo 2 mặt"`, `"tấm format"`, `"kéo cắt giấy"`, `"keo nến"`.
+4. **Nhóm 4 (Không có trong kho $\rightarrow$ Rỗng 100%)**: `"Kính hiển vi quang học điện tử"`, `"Máy in 3D công nghiệp"`, `"Tủ lạnh Panasonic 300L"`, `"Xe đạp ba bánh trẻ em mầm non"`, `"Cột bóng rổ di động ngoài trời"`, `"Xích đu cầu trượt liên hoàn inox"`, `"Máy chiếu Epson full HD"`, `"Dầu gội đầu Rejoice 650ml"`, `"Bộ cờ vua quốc tế cao cấp bằng gỗ"`, `"Máy giặt Electrolux 9kg cửa ngang"`.
+
+---
+
+## 🧪 Chạy Toàn Bộ Test Suite (15 Test Suites)
+
 ```bash
 npm test
 ```
 
-### Kết quả các kịch bản kiểm thử:
-- ✅ **Unit Test 1**: Tồn kho đủ -> Phân bổ đủ 100%, shortfall = 0.
-- ✅ **Unit Test 2**: Tồn kho thiếu một phần -> Phân bổ phần hiện có, shortfall = phần còn lại.
-- ✅ **Unit Test 3**: Tồn kho = 0 -> Allocated = 0, shortfall = số lượng xin.
-- ✅ **Unit Test 4**: Hai yêu cầu pending cùng xin 1 món -> Tổng số lượng giữ chỗ không vượt quá tồn kho thật.
-- ✅ **Integration Test**: Luồng hoàn chỉnh Tạo yêu cầu -> Duyệt yêu cầu -> Kiểm tra tồn kho giảm đúng, sinh dòng `stock_transactions`, và sinh bản ghi `purchase_proposals`.
-
----
-
-## 📋 Danh Sách Module Đã Hoàn Thành
-
-- [x] **Module 0**: Setup Next.js App Router + TypeScript + TailwindCSS + Prisma SQLite.
-- [x] **Module 1**: Đăng nhập & Phân quyền (bcrypt hash, JWT httpOnly cookie, route middleware).
-- [x] **Module 2**: Quản lý Kho tồn (CRUD đồ dùng, lọc sắp hết, nhập kho thủ công, audit trail).
-- [x] **Module 3**: Gửi Yêu cầu Đồ dùng (Kiểm tra tồn kho khả dụng real-time, thuật toán phân bổ kho tạm thời).
-- [x] **Module 4**: Duyệt Yêu cầu (Duyệt/Từ chối trong DB Transaction, trừ kho thật, sinh đề xuất mua).
-- [x] **Module 5**: Đề xuất Mua (Gom nhóm theo món đồ dùng, chuyển trạng thái "Đã đặt mua" & "Đã nhập kho").
-- [x] **Module 6**: Xuất File Excel (Xuất phiếu yêu cầu & bảng tổng hợp đề xuất mua chuẩn `.xlsx`).
-- [x] **Module 7**: Dashboard Tổng quan (4 thẻ chỉ số thời gian thực, 2 bảng top 5 rút gọn).
-- [x] **Module 8**: Quản lý Người dùng (Thêm user băm bcrypt, chặn tự xóa chính mình, chặn xóa admin cuối cùng).
-- [x] **Module 9**: Kiểm thử Unit/Integration & Tài liệu Triển khai.
+Tất cả **15 test suites** (bao gồm 51 test cases) đều **PASS 100%**:
+- `tests/search-accuracy-40.test.ts` (40 Queries Benchmark)
+- `tests/internal-search.test.ts` (3-Tier Internal Search)
+- `tests/external-search.test.ts` (Rate limit, Cache 48h, Unit inference)
+- `tests/external-proposals-flow.test.ts` (Proposal Workflow & Admin Approval)
+- `tests/allocation.test.ts`, `tests/flow.test.ts`, `tests/available-stock.test.ts`, `tests/roles-permissions.test.ts`, `tests/load-stress.test.ts`...

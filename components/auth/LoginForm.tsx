@@ -77,21 +77,21 @@ export function LoginForm() {
         
         {/* Header with Logo */}
         <div className="text-center space-y-3 mb-8">
-          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-tr from-emerald-500/15 via-teal-500/10 to-indigo-500/15 border border-emerald-500/20 shadow-xs">
-            <Boxes className="w-9 h-9 text-emerald-600" />
+          <div className="inline-flex items-center justify-center p-3.5 rounded-2xl bg-gradient-to-tr from-emerald-500/15 via-teal-500/10 to-indigo-500/15 border border-emerald-500/20 shadow-xs">
+            <Boxes className="w-10 h-10 text-emerald-600" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
               Kho Mầm Non
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            <p className="text-sm sm:text-base text-slate-500 mt-1.5">
               Hệ thống Quản lý Đồ dùng Học tập & Ngoại khóa
             </p>
           </div>
         </div>
 
         {error && (
-          <div className="mb-6 flex items-start gap-3 p-3.5 text-xs sm:text-sm text-rose-700 bg-rose-50 rounded-xl border border-rose-200">
+          <div className="mb-6 flex items-start gap-3 p-4 text-xs sm:text-sm text-rose-700 bg-rose-50 rounded-xl border border-rose-200">
             <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-500 mt-0.5" />
             <div className="flex-1 font-medium">{error}</div>
           </div>
@@ -99,7 +99,7 @@ export function LoginForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Tên đăng nhập
             </label>
             <div className="relative group">
@@ -111,7 +111,7 @@ export function LoginForm() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="quanly hoặc giaovien"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all text-sm font-medium"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all text-sm sm:text-base font-medium"
                 disabled={loading}
                 required
               />
@@ -119,7 +119,7 @@ export function LoginForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Mật khẩu
             </label>
             <div className="relative group">
@@ -131,7 +131,7 @@ export function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Nhập mật khẩu"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all text-sm font-medium"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all text-sm sm:text-base font-medium"
                 disabled={loading}
                 required
               />
@@ -142,18 +142,18 @@ export function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full relative group mt-2 flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden cursor-pointer"
+            className="w-full relative group mt-3 flex items-center justify-center gap-2 py-3.5 px-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden cursor-pointer"
           >
             <span className="absolute inset-0 w-full h-full bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Đang xác thực...</span>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm sm:text-base">Đang xác thực...</span>
               </>
             ) : (
               <>
-                <LogIn className="w-4 h-4" />
-                <span className="text-sm">Đăng nhập hệ thống</span>
+                <LogIn className="w-5 h-5" />
+                <span className="text-sm sm:text-base">Đăng nhập hệ thống</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </>
             )}

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Montserrat } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/common/Toast";
 import { SettingsProvider } from "@/components/settings/SettingsProvider";
 
-const montserrat = Montserrat({
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
+const manrope = Manrope({
+  weight: ["300", "400", "500", "600", "700", "800"],
   subsets: ["vietnamese", "latin"],
   variable: "--font-sans",
   display: "swap",
@@ -24,7 +24,7 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`${montserrat.variable} h-full antialiased`}
+      className={`${manrope.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans text-slate-800">
         <ToastProvider>

@@ -138,21 +138,25 @@ export const GET = requireAuth(async (_req: NextRequest, _user, context?: any) =
     request.requestItems.forEach((itemLine, index) => {
       const rowNum = headerRowNumber + 1 + index;
       const row = worksheet.getRow(rowNum);
-      const categoryLabel = itemLine.item.category === "hoc_tap" ? "Học tập" : "Ngoại khóa & Trang trí";
+      const itemName = itemLine.item?.name || itemLine.proposedName || "Mặt hàng đề xuất";
+      const itemUnit = itemLine.item?.unit || itemLine.proposedUnit || "cái";
+      const categoryLabel = itemLine.item?.category === "hoc_tap" ? "Học tập" : itemLine.item?.category === "ngoai_khoa" ? "Ngoại khóa & Trang trí" : "Đề xuất mới";
       const isItemRejected = itemLine.status === "rejected";
 
       let statusApprovalText = "Được duyệt";
       if (isItemRejected) {
         statusApprovalText = "Từ chối cấp";
+      } else if (itemLine.isNewItemProposal) {
+        statusApprovalText = "Đề xuất mua mới (Chưa có trong kho)";
       } else if (itemLine.shortfallQty > 0) {
         statusApprovalText = "Cấp một phần (Chờ mua)";
       }
 
       row.values = [
         index + 1,
-        itemLine.item.name,
+        itemName,
         categoryLabel,
-        itemLine.item.unit,
+        itemUnit,
         itemLine.requestedQty,
         isItemRejected ? 0 : itemLine.allocatedQty,
         isItemRejected ? 0 : itemLine.shortfallQty,

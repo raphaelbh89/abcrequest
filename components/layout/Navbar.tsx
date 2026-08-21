@@ -99,10 +99,10 @@ export function Navbar({ user }: NavbarProps) {
                 </div>
               </div>
               <div className="flex flex-col justify-center whitespace-nowrap leading-tight">
-                <span className="font-extrabold text-base tracking-tight text-slate-900 leading-tight whitespace-nowrap">
+                <span className="font-extrabold text-base sm:text-lg tracking-tight text-slate-900 leading-tight whitespace-nowrap">
                   {settings.app_title || "Kho Mầm Non"}
                 </span>
-                <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase leading-tight whitespace-nowrap">
+                <span className="text-[11px] sm:text-xs text-slate-500 font-bold tracking-wider uppercase leading-tight whitespace-nowrap">
                   {settings.subtitle || "Quản lý đồ dùng"}
                 </span>
               </div>
@@ -113,7 +113,7 @@ export function Navbar({ user }: NavbarProps) {
               {/* 1. Tổng quan */}
               <Link
                 href="/dashboard"
-                className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all duration-200 ${
+                className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-200 ${
                   pathname === "/dashboard"
                     ? "text-emerald-700 bg-emerald-50 shadow-xs border border-emerald-200"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
@@ -136,7 +136,7 @@ export function Navbar({ user }: NavbarProps) {
                 <button
                   type="button"
                   onClick={() => setIsWarehouseDropdownOpen(!isWarehouseDropdownOpen)}
-                  className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer ${
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer ${
                     isWarehouseActive
                       ? "text-emerald-700 bg-emerald-50 shadow-xs border border-emerald-200"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
@@ -152,36 +152,36 @@ export function Navbar({ user }: NavbarProps) {
 
                 {/* Submenu Popover */}
                 {isWarehouseDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-52 p-1.5 glass-dropdown rounded-2xl border border-slate-200/90 shadow-xl z-50 bg-white/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                  <div className="absolute top-full left-0 mt-1 w-56 p-1.5 glass-dropdown rounded-2xl border border-slate-200/90 shadow-xl z-50 bg-white/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 space-y-1">
                     <Link
                       href="/inventory"
                       onClick={() => setIsWarehouseDropdownOpen(false)}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                         pathname === "/inventory"
                           ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold"
                           : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
                       }`}
                     >
-                      <Package className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <Package className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
                       <div className="flex flex-col">
-                        <span className="whitespace-nowrap">Danh sách kho tồn</span>
-                        <span className="text-[10px] text-slate-400 font-normal">Quản lý số lượng & trạng thái</span>
+                        <span className="whitespace-nowrap font-bold">Danh sách kho tồn</span>
+                        <span className="text-xs text-slate-500 font-normal">Quản lý số lượng & trạng thái</span>
                       </div>
                     </Link>
 
                     <Link
                       href="/inventory/transactions"
                       onClick={() => setIsWarehouseDropdownOpen(false)}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                         pathname === "/inventory/transactions"
                           ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold"
                           : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
                       }`}
                     >
-                      <History className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <History className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
                       <div className="flex flex-col">
-                        <span className="whitespace-nowrap">Lịch sử xuất / nhập kho</span>
-                        <span className="text-[10px] text-slate-400 font-normal">Biến động kho chi tiết</span>
+                        <span className="whitespace-nowrap font-bold">Lịch sử xuất / nhập kho</span>
+                        <span className="text-xs text-slate-500 font-normal">Biến động kho chi tiết</span>
                       </div>
                     </Link>
                   </div>
@@ -192,7 +192,7 @@ export function Navbar({ user }: NavbarProps) {
               {canViewRequests && (
                 <Link
                   href="/requests"
-                  className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all duration-200 ${
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-200 ${
                     pathname.startsWith("/requests")
                       ? "text-emerald-700 bg-emerald-50 shadow-xs border border-emerald-200"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
@@ -210,7 +210,7 @@ export function Navbar({ user }: NavbarProps) {
               {canViewProposals && (
                 <Link
                   href="/purchase-proposals"
-                  className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all duration-200 ${
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-200 ${
                     pathname.startsWith("/purchase-proposals")
                       ? "text-emerald-700 bg-emerald-50 shadow-xs border border-emerald-200"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
@@ -228,7 +228,7 @@ export function Navbar({ user }: NavbarProps) {
               {canViewSettings && (
                 <Link
                   href="/admin/settings"
-                  className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all duration-200 ${
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-200 ${
                     pathname.startsWith("/admin")
                       ? "text-emerald-700 bg-emerald-50 shadow-xs border border-emerald-200"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"

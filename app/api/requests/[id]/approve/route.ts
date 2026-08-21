@@ -48,7 +48,8 @@ export const PATCH = requireRole(["admin", "manager"], async (req: NextRequest, 
 
         if (isRejected) {
           // 1. Mark this specific item as rejected
-          rejectedItemNames.push(itemLine.item.name);
+          const itemName = itemLine.item?.name || itemLine.proposedName || "Món đề xuất";
+          rejectedItemNames.push(itemName);
           await tx.requestItem.update({
             where: { id: itemLine.id },
             data: {
@@ -72,8 +73,8 @@ export const PATCH = requireRole(["admin", "manager"], async (req: NextRequest, 
         const allocatedQty = itemLine.allocatedQty;
         const shortfallQty = itemLine.shortfallQty;
 
-        // Deduct physical stock if allocatedQty > 0
-        if (allocatedQty > 0) {
+        // Deduct physical stock if allocatedQty > 0 and itemId exists
+        if (allocatedQty > 0 && itemId) {
           await tx.item.update({
             where: { id: itemId },
             data: {
@@ -98,7 +99,9 @@ export const PATCH = requireRole(["admin", "manager"], async (req: NextRequest, 
         if (shortfallQty > 0) {
           await tx.purchaseProposal.create({
             data: {
-              itemId: itemId,
+              itemId: itemId || null,
+              proposedName: itemLine.proposedName || (itemLine.item ? null : "Món đề xuất mới"),
+              proposedUnit: itemLine.proposedUnit || (itemLine.item ? null : "cái"),
               qty: shortfallQty,
               sourceRequestId: targetRequest.id,
               status: "can_mua",

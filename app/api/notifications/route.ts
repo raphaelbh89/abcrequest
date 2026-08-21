@@ -87,11 +87,13 @@ export const GET = requireAuth(async (_req: NextRequest, user) => {
       });
 
       receivedProposals.forEach((p) => {
+        const itemName = p.item?.name || p.proposedName || "Món đồ dùng";
+        const itemUnit = p.item?.unit || p.proposedUnit || "món";
         notifications.push({
           id: `prop-rec-${p.id}`,
           type: "stock_received",
           title: "Đồ dùng đặt mua đã nhập kho",
-          message: `Món "${p.item.name}" (SL: ${p.receivedQty} ${p.item.unit}) cho hoạt động "${p.sourceRequest.purpose}" đã về kho!`,
+          message: `Món "${itemName}" (SL: ${p.receivedQty} ${itemUnit}) cho hoạt động "${p.sourceRequest.purpose}" đã về kho!`,
           timestamp: (p.resolvedAt || p.createdAt).toISOString(),
           link: `/requests/${p.sourceRequestId}`,
         });
@@ -150,11 +152,13 @@ export const GET = requireAuth(async (_req: NextRequest, user) => {
       });
 
       completedProposals.forEach((p) => {
+        const itemName = p.item?.name || p.proposedName || "Món đồ dùng";
+        const itemUnit = p.item?.unit || p.proposedUnit || "món";
         notifications.push({
           id: `admin-prop-rec-${p.id}`,
           type: "stock_received",
           title: "Nhập kho mua mới hoàn tất",
-          message: `Đã nhập kho +${p.receivedQty} ${p.item.unit} cho "${p.item.name}".`,
+          message: `Đã nhập kho +${p.receivedQty} ${itemUnit} cho "${itemName}".`,
           timestamp: (p.resolvedAt || p.createdAt).toISOString(),
           link: `/purchase-proposals`,
         });

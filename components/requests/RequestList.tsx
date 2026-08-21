@@ -18,26 +18,36 @@ import {
   PackageMinus,
   UserCheck,
   Download,
-  Calendar,
   User,
+  Calendar,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  PackagePlus,
+  ExternalLink,
 } from "lucide-react";
 import { RejectModal } from "./RejectModal";
 import { ApproveModal } from "./ApproveModal";
+import { ItemModal, ItemData } from "@/components/inventory/ItemModal";
 import { useToast } from "@/components/common/Toast";
 
 interface RequestItemData {
   id: string;
+  itemId?: string | null;
   requestedQty: number;
   allocatedQty: number;
   shortfallQty: number;
   status?: "approved" | "rejected" | string;
-  item: {
+  isNewItemProposal?: boolean;
+  proposedName?: string | null;
+  proposedUnit?: string | null;
+  proposedPrice?: number | null;
+  proposedImageUrl?: string | null;
+  proposedSourceUrl?: string | null;
+  item?: {
     name: string;
     unit: string;
     category: string;
-  };
+  } | null;
 }
 
 interface RequestData {
@@ -84,6 +94,10 @@ export function RequestList({ user }: RequestListProps) {
   // Reject Modal state for whole request rejection
   const [rejectTarget, setRejectTarget] = useState<RequestData | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  // Modal tạo mặt hàng mới từ dòng đề xuất
+  const [createItemModalOpen, setCreateItemModalOpen] = useState(false);
+  const [createItemPrefill, setCreateItemPrefill] = useState<ItemData | null>(null);
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -490,7 +504,11 @@ export function RequestList({ user }: RequestListProps) {
                               rejectedThisReq.includes(ri.id) ||
                               ri.status === "rejected";
 
-                            const isFullyAllocated = ri.shortfallQty === 0;
+                            const isNewProposal = Boolean(ri.isNewItemProposal);
+                            const itemName = ri.item?.name || ri.proposedName || "Món đề xuất mới";
+                            const itemUnit = ri.item?.unit || ri.proposedUnit || "cái";
+                            const itemCat = ri.item?.category === "hoc_tap" ? "Học tập" : ri.item?.category === "ngoai_khoa" ? "Ngoại khóa" : "Đề xuất mới";
+                            const isFullyAllocated = ri.shortfallQty === 0 && !isNewProposal;
 
                             return (
                               <tr
@@ -502,30 +520,50 @@ export function RequestList({ user }: RequestListProps) {
                                 }`}
                               >
                                 <td className="px-4 py-3">
-                                  <div className={`font-bold ${isMarkedRejected ? "line-through text-slate-400" : "text-slate-800"}`}>
-                                    {ri.item.name}
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`font-bold ${isMarkedRejected ? "line-through text-slate-400" : "text-slate-800"}`}>
+                                        {itemName}
+                                      </span>
+                                      {isNewProposal && (
+                                        <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
+                                          ⭐ Đề xuất mới
+                                        </span>
+                                      )}
+                                    </div>
+                                    {isNewProposal && ri.proposedSourceUrl && (
+                                      <a
+                                        href={ri.proposedSourceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline"
+                                      >
+                                        <ExternalLink className="w-3 h-3" />
+                                        <span>Link nguồn kiểm chứng</span>
+                                      </a>
+                                    )}
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 text-slate-500">
-                                  {ri.item.category === "hoc_tap" ? "Học tập" : "Ngoại khóa"}
+                                  {itemCat}
                                 </td>
                                 <td className="px-4 py-3 font-mono font-bold">
                                   <span className={isMarkedRejected ? "line-through" : "text-slate-800"}>
-                                    {ri.requestedQty} {ri.item.unit}
+                                    {ri.requestedQty} {itemUnit}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 font-mono font-black">
                                   {isMarkedRejected ? (
-                                    <span className="text-slate-400">0 {ri.item.unit}</span>
+                                    <span className="text-slate-400">0 {itemUnit}</span>
                                   ) : (
-                                    <span className="text-emerald-700">{ri.allocatedQty} {ri.item.unit}</span>
+                                    <span className="text-emerald-700">{ri.allocatedQty} {itemUnit}</span>
                                   )}
                                 </td>
                                 <td className="px-4 py-3 font-mono font-black">
                                   {isMarkedRejected ? (
-                                    <span className="text-slate-400">0 {ri.item.unit}</span>
+                                    <span className="text-slate-400">0 {itemUnit}</span>
                                   ) : (
-                                    <span className="text-amber-700">{ri.shortfallQty} {ri.item.unit}</span>
+                                    <span className="text-amber-700">{ri.shortfallQty} {itemUnit}</span>
                                   )}
                                 </td>
                                 <td className="px-4 py-3">
@@ -539,40 +577,71 @@ export function RequestList({ user }: RequestListProps) {
                                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                                         isFullyAllocated
                                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                          : isNewProposal
+                                          ? "bg-indigo-50 text-indigo-700 border-indigo-200"
                                           : "bg-amber-50 text-amber-700 border-amber-200"
                                       }`}
                                     >
                                       {isFullyAllocated
                                         ? "Đủ hàng từ kho"
-                                        : `Thiếu ${ri.shortfallQty} ${ri.item.unit} (Sinh đề xuất)`}
+                                        : isNewProposal
+                                        ? "Đề xuất mua 100%"
+                                        : `Thiếu ${ri.shortfallQty} ${itemUnit} (Sinh đề xuất)`}
                                     </span>
                                   )}
                                 </td>
 
-                                {/* Admin row action button */}
-                                {isAdmin && req.status === "pending" && (
+                                {/* Admin row actions */}
+                                {isAdmin && (
                                   <td className="px-4 py-3 text-right">
-                                    {isMarkedRejected ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleToggleRejectItem(req.id, ri.id)}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg shadow-2xs transition-colors cursor-pointer"
-                                        title="Cấp lại món này"
-                                      >
-                                        <RotateCcw className="w-3 h-3 text-slate-500" />
-                                        <span>Khôi phục</span>
-                                      </button>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleToggleRejectItem(req.id, ri.id)}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg shadow-2xs transition-colors cursor-pointer"
-                                        title="Không cấp món này cho giáo viên"
-                                      >
-                                        <XCircle className="w-3 h-3 text-rose-600" />
-                                        <span>Từ chối món này</span>
-                                      </button>
-                                    )}
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      {/* Nút Tạo mặt hàng mới trong kho khi có dòng đề xuất */}
+                                      {isNewProposal && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setCreateItemPrefill({
+                                              name: ri.proposedName || "",
+                                              unit: ri.proposedUnit || "cái",
+                                              price: ri.proposedPrice || null,
+                                              quantity: 0,
+                                              minStock: 5,
+                                              category: "hoc_tap",
+                                            });
+                                            setCreateItemModalOpen(true);
+                                          }}
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                                          title="Tạo mặt hàng này vào danh mục kho của trường"
+                                        >
+                                          <PackagePlus className="w-3.5 h-3.5" />
+                                          <span>Tạo vào kho</span>
+                                        </button>
+                                      )}
+
+                                      {req.status === "pending" && (
+                                        isMarkedRejected ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleToggleRejectItem(req.id, ri.id)}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                                            title="Cấp lại món này"
+                                          >
+                                            <RotateCcw className="w-3 h-3 text-slate-500" />
+                                            <span>Khôi phục</span>
+                                          </button>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleToggleRejectItem(req.id, ri.id)}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                                            title="Không cấp món này cho giáo viên"
+                                          >
+                                            <XCircle className="w-3 h-3 text-rose-600" />
+                                            <span>Từ chối</span>
+                                          </button>
+                                        )
+                                      )}
+                                    </div>
                                   </td>
                                 )}
                               </tr>
@@ -588,6 +657,20 @@ export function RequestList({ user }: RequestListProps) {
           })}
         </div>
       )}
+
+      {/* Item Modal to create item from proposal */}
+      <ItemModal
+        isOpen={createItemModalOpen}
+        onClose={() => {
+          setCreateItemModalOpen(false);
+          setCreateItemPrefill(null);
+        }}
+        onSuccess={() => {
+          toastSuccess("Đã khởi tạo mặt hàng vào kho thành công!");
+          fetchRequests();
+        }}
+        initialData={createItemPrefill}
+      />
 
       {/* Approve Modal */}
       {approveTarget && (

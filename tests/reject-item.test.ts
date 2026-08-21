@@ -57,7 +57,7 @@ describe("Integration Test: Quản lý từ chối từng món khi duyệt đơn
     await prisma.$transaction(async (tx) => {
       for (const itemLine of request.requestItems) {
         if (rejectedItemIds.includes(itemLine.id)) {
-          rejectedNames.push(itemLine.item.name);
+          if (itemLine.item) rejectedNames.push(itemLine.item.name);
           await tx.requestItem.update({
             where: { id: itemLine.id },
             data: {
@@ -75,7 +75,7 @@ describe("Integration Test: Quản lý từ chối từng món khi duyệt đơn
           data: { status: "approved" },
         });
 
-        if (itemLine.allocatedQty > 0) {
+        if (itemLine.allocatedQty > 0 && itemLine.itemId) {
           await tx.item.update({
             where: { id: itemLine.itemId },
             data: { quantity: { decrement: itemLine.allocatedQty } },

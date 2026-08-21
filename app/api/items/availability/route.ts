@@ -25,7 +25,9 @@ export const GET = requireAuth(async () => {
 
     const pendingMap = new Map<string, number>();
     pendingAllocations.forEach((pa) => {
-      pendingMap.set(pa.itemId, pa._sum.allocatedQty || 0);
+      if (pa.itemId) {
+        pendingMap.set(pa.itemId, pa._sum.allocatedQty || 0);
+      }
     });
 
     const itemsAvailability = items.map((item) => {

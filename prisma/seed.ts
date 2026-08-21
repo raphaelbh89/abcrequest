@@ -142,7 +142,18 @@ async function main() {
     });
   }
 
-  // Seed sample items
+  function normalizeVietnamese(text: string): string {
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[đĐ]/g, "d")
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Seed sample items with realistic thumbnail images
   const sampleItems = [
     {
       name: "Bút màu dạ 12 màu",
@@ -152,6 +163,27 @@ async function main() {
       minStock: 5,
       price: 25000,
       location: "Kệ A1",
+      imageUrl: "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=150&auto=format&fit=crop&q=80",
+    },
+    {
+      name: "Bút chì 2B thân gỗ",
+      category: "hoc_tap",
+      unit: "hộp",
+      quantity: 20,
+      minStock: 5,
+      price: 15000,
+      location: "Kệ A1",
+      imageUrl: "https://images.unsplash.com/photo-1585336261026-78b77d612e4f?w=150&auto=format&fit=crop&q=80",
+    },
+    {
+      name: "Bút bi Thiên Long 0.5mm",
+      category: "hoc_tap",
+      unit: "cây",
+      quantity: 30,
+      minStock: 10,
+      price: 4000,
+      location: "Kệ A1",
+      imageUrl: "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=150&auto=format&fit=crop&q=80",
     },
     {
       name: "Giấy A4 màu thủ công",
@@ -161,6 +193,57 @@ async function main() {
       minStock: 10,
       price: 35000,
       location: "Kệ A2",
+      imageUrl: "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=150&auto=format&fit=crop&q=80",
+    },
+    {
+      name: "Sáp màu hữu cơ 16 màu",
+      category: "hoc_tap",
+      unit: "hộp",
+      quantity: 18,
+      minStock: 5,
+      price: 28000,
+      location: "Kệ A2",
+      imageUrl: "https://images.unsplash.com/photo-1560421683-680b9c814e52?w=150&auto=format&fit=crop&q=80",
+    },
+    {
+      name: "Đất nặn tạo hình 12 màu",
+      category: "hoc_tap",
+      unit: "hộp",
+      quantity: 12,
+      minStock: 5,
+      price: 22000,
+      location: "Kệ A3",
+      imageUrl: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=150&auto=format&fit=crop&q=80",
+    },
+    {
+      name: "Kéo thủ công mũi tròn an toàn",
+      category: "hoc_tap",
+      unit: "cái",
+      quantity: 25,
+      minStock: 8,
+      price: 9000,
+      location: "Kệ A3",
+      imageUrl: "https://images.unsplash.com/photo-1590856029826-c7a73142bbf1?w=150&auto=format&fit=crop&q=80",
+    },
+    {
+      name: "Băng dính 2 mặt siêu dính",
+      category: "ngoai_khoa",
+      unit: "cuộn",
+      quantity: 14,
+      minStock: 5,
+      price: 6000,
+      location: "Tủ 1",
+      imageUrl: "https://images.unsplash.com/photo-1607344645866-009c320c5ab8?w=150&auto=format&fit=crop&q=80",
+    },
+    {
+      name: "Tấm Formex (Format) dày 5mm",
+      category: "ngoai_khoa",
+      unit: "tấm",
+      quantity: 8,
+      minStock: 4,
+      price: 45000,
+      location: "Tủ 1",
+      imageUrl: "https://images.unsplash.com/photo-1530595467537-0b5996c41f2d?w=150&auto=format&fit=crop&q=80",
     },
     {
       name: "Ruy-băng trang trí hoa",
@@ -169,7 +252,8 @@ async function main() {
       quantity: 20,
       minStock: 5,
       price: 12000,
-      location: "Tủ 1",
+      location: "Tủ 2",
+      imageUrl: "https://images.unsplash.com/photo-1512909006721-3d6018887383?w=150&auto=format&fit=crop&q=80",
     },
     {
       name: "Keo dán nến đóng khung",
@@ -179,6 +263,7 @@ async function main() {
       minStock: 8,
       price: 8000,
       location: "Tủ 2",
+      imageUrl: "https://images.unsplash.com/photo-1629198688000-71f23e745b6e?w=150&auto=format&fit=crop&q=80",
     },
   ];
 
@@ -186,9 +271,13 @@ async function main() {
     const existing = await prisma.item.findFirst({
       where: { name: itemData.name },
     });
+    const normalized = normalizeVietnamese(itemData.name);
     if (!existing) {
       const item = await prisma.item.create({
-        data: itemData,
+        data: {
+          ...itemData,
+          nameNormalized: normalized,
+        },
       });
 
       await prisma.stockTransaction.create({
@@ -200,6 +289,27 @@ async function main() {
           performedBy: admin.id,
           note: "Khởi tạo dữ liệu mẫu",
         },
+      });
+    } else {
+      await prisma.item.update({
+        where: { id: existing.id },
+        data: {
+          nameNormalized: normalized,
+          imageUrl: itemData.imageUrl,
+          price: itemData.price,
+          unit: itemData.unit,
+        },
+      });
+    }
+  }
+
+  // Cập nhật toàn bộ item trong DB có nameNormalized
+  const allExistingItems = await prisma.item.findMany();
+  for (const it of allExistingItems) {
+    if (!it.nameNormalized) {
+      await prisma.item.update({
+        where: { id: it.id },
+        data: { nameNormalized: normalizeVietnamese(it.name) },
       });
     }
   }

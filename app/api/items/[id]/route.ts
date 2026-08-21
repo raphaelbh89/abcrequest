@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/auth-guards";
+import { normalizeVietnamese } from "@/lib/search";
 
 // PATCH /api/items/[id] - Admin, Manager, Stocker
 export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: NextRequest, user, context?: any) => {
@@ -13,7 +14,7 @@ export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: Ne
     }
 
     const body = await req.json();
-    const { name, category, unit, quantity, minStock, price, location } = body;
+    const { name, category, unit, quantity, minStock, price, location, imageUrl } = body;
 
     const existingItem = await prisma.item.findUnique({
       where: { id: itemId },
@@ -24,12 +25,17 @@ export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: Ne
     }
 
     const updateData: any = {};
-    if (name !== undefined) updateData.name = String(name).trim();
+    if (name !== undefined) {
+      const trimmedName = String(name).trim();
+      updateData.name = trimmedName;
+      updateData.nameNormalized = normalizeVietnamese(trimmedName);
+    }
     if (category !== undefined) updateData.category = String(category).trim();
     if (unit !== undefined) updateData.unit = String(unit).trim();
     if (minStock !== undefined) updateData.minStock = Math.max(0, parseInt(minStock, 10));
     if (price !== undefined) updateData.price = price !== null && price !== "" ? parseFloat(price) : null;
     if (location !== undefined) updateData.location = location ? String(location).trim() : null;
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl ? String(imageUrl).trim() : null;
 
     let qtyDiff = 0;
     if (quantity !== undefined) {

@@ -125,7 +125,7 @@ describe("Integration Test: Luồng Nghiệp vụ (Tạo Yêu Cầu -> Duyệt -
     // Simulate Approval Transaction
     await prisma.$transaction(async (tx) => {
       for (const line of targetRequest.requestItems) {
-        if (line.allocatedQty > 0) {
+        if (line.allocatedQty > 0 && line.itemId) {
           await tx.item.update({
             where: { id: line.itemId },
             data: { quantity: { decrement: line.allocatedQty } },

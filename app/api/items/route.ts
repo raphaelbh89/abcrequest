@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireRole } from "@/lib/auth-guards";
 import { computeAvailableStock } from "@/lib/allocation";
+import { normalizeVietnamese } from "@/lib/search";
 
 // GET /api/items - Anyone logged in can view items with real-time available & reserved quantities
 export const GET = requireAuth(async (req: NextRequest) => {
@@ -59,6 +60,7 @@ export const GET = requireAuth(async (req: NextRequest) => {
         minStock: item.minStock,
         price: item.price,
         location: item.location,
+        imageUrl: item.imageUrl,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
       };
@@ -83,7 +85,7 @@ export const GET = requireAuth(async (req: NextRequest) => {
 export const POST = requireRole(["admin", "manager", "stocker"], async (req: NextRequest, user) => {
   try {
     const body = await req.json();
-    const { name, category, unit, quantity, minStock, price, location } = body;
+    const { name, category, unit, quantity, minStock, price, location, imageUrl } = body;
 
     if (!name || !category || !unit) {
       return NextResponse.json(
@@ -97,15 +99,18 @@ export const POST = requireRole(["admin", "manager", "stocker"], async (req: Nex
     const prc = price !== undefined && price !== null && price !== "" ? parseFloat(price) : null;
 
     const newItem = await prisma.$transaction(async (tx) => {
+      const trimmedName = String(name).trim();
       const item = await tx.item.create({
         data: {
-          name: String(name).trim(),
+          name: trimmedName,
+          nameNormalized: normalizeVietnamese(trimmedName),
           category: String(category).trim(),
           unit: String(unit).trim(),
           quantity: qty,
           minStock: minStk,
           price: prc,
           location: location ? String(location).trim() : null,
+          imageUrl: imageUrl ? String(imageUrl).trim() : null,
         },
       });
 

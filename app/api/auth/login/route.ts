@@ -50,12 +50,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Sử dụng Session Cookie (không có maxAge/expires) để tự động đăng xuất khi tắt trình duyệt
     response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24, // 24 hours
     });
 
     return response;

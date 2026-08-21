@@ -177,7 +177,7 @@ describe("Database Load & Stress Testing (Kiểm thử tải & Lưu lượng d�
           async (tx) => {
             // 1. Trừ kho
             for (const rItem of req.requestItems) {
-              if (rItem.allocatedQty > 0) {
+              if (rItem.allocatedQty > 0 && rItem.itemId) {
                 await tx.item.update({
                   where: { id: rItem.itemId },
                   data: { quantity: { decrement: rItem.allocatedQty } },

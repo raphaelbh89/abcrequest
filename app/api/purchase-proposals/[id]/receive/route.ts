@@ -43,18 +43,36 @@ export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: Ne
     }
 
     const updatedResult = await prisma.$transaction(async (tx) => {
-      // 1. Add physical stock to item.quantity
-      const item = await tx.item.update({
-        where: { id: proposal.itemId },
-        data: {
-          quantity: { increment: recvQty },
-        },
-      });
+      let targetItemId: string;
+      let updatedItem: any;
+
+      if (!proposal.itemId) {
+        // Tạo mặt hàng vào kho nếu chưa có itemId
+        updatedItem = await tx.item.create({
+          data: {
+            name: proposal.proposedName || "Mặt hàng mua mới",
+            unit: proposal.proposedUnit || "cái",
+            category: "hoc_tap",
+            quantity: recvQty,
+            minStock: 5,
+          },
+        });
+        targetItemId = updatedItem.id;
+      } else {
+        targetItemId = proposal.itemId;
+        // 1. Add physical stock to item.quantity
+        updatedItem = await tx.item.update({
+          where: { id: targetItemId },
+          data: {
+            quantity: { increment: recvQty },
+          },
+        });
+      }
 
       // 2. Log in stock_transactions
       await tx.stockTransaction.create({
         data: {
-          itemId: proposal.itemId,
+          itemId: targetItemId,
           type: "nhap_kho",
           quantityChange: recvQty,
           referenceId: proposal.id,
@@ -81,7 +99,7 @@ export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: Ne
         },
       });
 
-      return { item, proposal: updatedProposal };
+      return { item: updatedItem, proposal: updatedProposal };
     });
 
     return NextResponse.json({

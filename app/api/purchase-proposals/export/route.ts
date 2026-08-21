@@ -33,22 +33,28 @@ export const GET = requireRole(["admin", "manager", "stocker"], async (_req: Nex
     proposals.forEach((p) => {
       if (p.status === "da_nhap_kho") return; // Export only active/needed purchase proposals
 
-      const reqItem = p.sourceRequest.requestItems.find((i) => i.itemId === p.itemId);
+      const reqItem = p.sourceRequest.requestItems.find((i) => i.itemId === p.itemId || (p.proposedName && i.proposedName === p.proposedName));
       const requestedQty = reqItem ? reqItem.requestedQty : p.qty;
+      const itemKey = p.itemId || `proposed-${p.proposedName}`;
 
-      if (!groupedMap.has(p.itemId)) {
-        groupedMap.set(p.itemId, {
-          itemName: p.item.name,
-          unit: p.item.unit,
-          quyCach: p.item.category === "hoc_tap" ? "Đồ dùng học tập" : "Ngoại khóa & Sự kiện",
-          stockQty: p.item.quantity,
+      const itemName = p.item?.name || p.proposedName || "Mặt hàng đề xuất";
+      const itemUnit = p.item?.unit || p.proposedUnit || "cái";
+      const quyCach = p.item?.category === "hoc_tap" ? "Đồ dùng học tập" : p.item?.category === "ngoai_khoa" ? "Ngoại khóa & Sự kiện" : "Đề xuất mua mới";
+      const stockQty = p.item?.quantity ?? 0;
+
+      if (!groupedMap.has(itemKey)) {
+        groupedMap.set(itemKey, {
+          itemName,
+          unit: itemUnit,
+          quyCach,
+          stockQty,
           totalRequestedQty: 0,
           totalShortfallQty: 0,
           requesters: [],
         });
       }
 
-      const group = groupedMap.get(p.itemId)!;
+      const group = groupedMap.get(itemKey)!;
       group.totalRequestedQty += requestedQty;
       group.totalShortfallQty += p.qty;
       const requesterName = p.sourceRequest.requester.fullName || p.sourceRequest.requester.username;

@@ -19,11 +19,14 @@ export interface RequestItemInfo {
   requestedQty: number;
   allocatedQty: number;
   shortfallQty: number;
-  item: {
+  isNewItemProposal?: boolean;
+  proposedName?: string | null;
+  proposedUnit?: string | null;
+  item?: {
     name: string;
     unit: string;
     category?: string;
-  };
+  } | null;
 }
 
 interface ApproveModalProps {
@@ -159,11 +162,15 @@ export function ApproveModal({
                 <span>ĐÃ LOẠI BỎ {rejectedItems.length} MÓN KHÔNG CẤP:</span>
               </div>
               <ul className="space-y-1 pl-6 list-disc text-amber-800 font-medium">
-                {rejectedItems.map((ri) => (
-                  <li key={ri.id}>
-                    <strong className="text-slate-800">{ri.item.name}</strong> ({ri.requestedQty} {ri.item.unit})
-                  </li>
-                ))}
+                {rejectedItems.map((ri) => {
+                  const name = ri.item?.name || ri.proposedName || "Món đề xuất";
+                  const unit = ri.item?.unit || ri.proposedUnit || "cái";
+                  return (
+                    <li key={ri.id}>
+                      <strong className="text-slate-800">{name}</strong> ({ri.requestedQty} {unit})
+                    </li>
+                  );
+                })}
               </ul>
               <p className="text-[11px] text-amber-700 italic pt-1 border-t border-amber-200/60">
                 * Giáo viên sẽ nhận được thông báo về các món bị từ chối này.
