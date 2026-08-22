@@ -526,7 +526,55 @@ export function parseCsvInventoryString(csvContent: string): ParseResult {
 }
 
 /**
- * Tự động phát hiện và phân tích file theo đuôi tệp hoặc nội dung (Word .docx, Excel .xlsx, CSV)
+ * Phân tích file Word dạng HTML Table (thường gặp khi xuất file Word từ các phần mềm quản lý với đuôi .doc)
+ */
+export function parseHtmlWordTable(htmlContent: string): ParseResult | null {
+  try {
+    const tableRegex = /<table[^>]*>([\s\S]*?)<\/table>/gi;
+    const tableMatch = tableRegex.exec(htmlContent);
+    if (!tableMatch) return null;
+
+    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    const rawRows: string[][] = [];
+    let rMatch;
+
+    while ((rMatch = rowRegex.exec(htmlContent)) !== null) {
+      const rowHtml = rMatch[1];
+      const cellRegex = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+      const cells: string[] = [];
+      let cMatch;
+
+      while ((cMatch = cellRegex.exec(rowHtml)) !== null) {
+        // Strip HTML tags and entities
+        const cellText = cMatch[1]
+          .replace(/<[^>]*>/g, " ")
+          .replace(/&nbsp;/gi, " ")
+          .replace(/&amp;/gi, "&")
+          .replace(/&lt;/gi, "<")
+          .replace(/&gt;/gi, ">")
+          .replace(/&quot;/gi, '"')
+          .replace(/\s+/g, " ")
+          .trim();
+        cells.push(cellText);
+      }
+
+      if (cells.some((c) => c.length > 0)) {
+        rawRows.push(cells);
+      }
+    }
+
+    if (rawRows.length === 0) return null;
+
+    const result = parseRowsIntoInventoryItems(rawRows, htmlContent);
+    result.fileType = "word";
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Tự động phát hiện và phân tích file theo đuôi tệp hoặc nội dung (Word .docx, .doc, Excel .xlsx, CSV)
  */
 export async function parseUniversalInventoryBuffer(
   buffer: ArrayBuffer | Buffer,
@@ -534,21 +582,55 @@ export async function parseUniversalInventoryBuffer(
 ): Promise<ParseResult> {
   const lowerName = fileName.toLowerCase();
 
+  // 1. Nếu là file Word (.docx hoặc .doc)
   if (lowerName.endsWith(".docx") || lowerName.endsWith(".doc")) {
+    // Thử giải mã dạng DOCX (Zip XML)
     try {
       return await parseDocxInventoryBuffer(buffer);
     } catch (docxErr: any) {
-      throw new Error(`Không thể đọc file Word: ${docxErr?.message || "Định dạng file Word không hợp lệ"}`);
+      // Fallback 1: Kiểm tra xem có phải file HTML lưu dưới đuôi .doc / .docx không
+      try {
+        const textDecoder = new TextDecoder("utf-8");
+        const str = textDecoder.decode(buffer);
+        if (str.includes("<table") || str.includes("<TABLE") || str.includes("<html") || str.includes("<HTML")) {
+          const htmlRes = parseHtmlWordTable(str);
+          if (htmlRes && htmlRes.items.length > 0) {
+            return htmlRes;
+          }
+        }
+      } catch {
+        // Ignore fallback error
+      }
+
+      // Fallback 2: Thử đọc dạng Excel nếu người dùng đổi tên từ file excel sang .doc
+      try {
+        return await parseExcelInventoryBuffer(buffer);
+      } catch {
+        // Ignore fallback error
+      }
+
+      // Kiểm tra xem có phải binary .doc (Word 97-2003 OLE format)
+      const uint8 = new Uint8Array(buffer instanceof Buffer ? buffer : buffer);
+      if (uint8.length >= 8 && uint8[0] === 0xd0 && uint8[1] === 0xcf && uint8[2] === 0x11 && uint8[3] === 0xe0) {
+        throw new Error(
+          "File thuộc định dạng Word cũ (.doc - Word 97-2003). Vui lòng mở file bằng Microsoft Word / Google Docs và chọn 'Save As' sang định dạng .docx hoặc .xlsx để hệ thống bóc tách chính xác 100%."
+        );
+      }
+
+      throw new Error(
+        `Không thể đọc nội dung file Word: ${docxErr?.message || "Vui lòng kiểm tra lại file .docx có chứa bảng biểu hợp lệ."}`
+      );
     }
   }
 
+  // 2. Nếu là file CSV
   if (lowerName.endsWith(".csv")) {
     const textDecoder = new TextDecoder("utf-8");
     const content = textDecoder.decode(buffer);
     return parseCsvInventoryString(content);
   }
 
-  // Mặc định hoặc .xlsx / .xls
+  // 3. Mặc định hoặc .xlsx / .xls
   try {
     return await parseExcelInventoryBuffer(buffer);
   } catch (excelErr: any) {
@@ -556,7 +638,9 @@ export async function parseUniversalInventoryBuffer(
     try {
       return await parseDocxInventoryBuffer(buffer);
     } catch {
-      throw new Error(`Không thể đọc file: ${excelErr?.message || "Vui lòng chọn file Word (.docx) hoặc Excel (.xlsx, .xls, .csv) hợp lệ"}`);
+      throw new Error(
+        `Không thể đọc file: ${excelErr?.message || "Vui lòng chọn file Word (.docx) hoặc Excel (.xlsx, .xls, .csv) hợp lệ."}`
+      );
     }
   }
 }

@@ -1,4 +1,12 @@
+import path from "path";
 import { PrismaClient } from "@prisma/client";
+
+// Đảm bảo đường dẫn tuyệt đối chuẩn xác đến prisma/dev.db
+const dbFilePath = path.resolve(process.cwd(), "prisma", "dev.db");
+const normalizedDbUrl = `file:${dbFilePath.replace(/\\/g, "/")}`;
+
+// Đồng bộ biến môi trường để Prisma CLI và Runtime dùng chung 1 database file
+process.env.DATABASE_URL = normalizedDbUrl;
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -7,6 +15,11 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
+    datasources: {
+      db: {
+        url: normalizedDbUrl,
+      },
+    },
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 

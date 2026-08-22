@@ -275,4 +275,54 @@ describe("Unit & Integration Tests: Excel Inventory Import (Module Kho)", () => 
       assert.strictEqual(isNoise, false, `Mặt hàng '${text}' phải được giữ lại hợp lệ`);
     }
   });
+
+  test("8. Kiểm tra phân tích file Word dạng HTML Table (.doc export)", async () => {
+    const { parseHtmlWordTable } = await import("../lib/excel-import");
+
+    const sampleHtmlDoc = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office">
+        <body>
+          <p>Đơn vị yêu cầu: Ngoại khoá</p>
+          <table border="1">
+            <tr>
+              <th>Stt</th>
+              <th>Tên tài sản/dịch vụ</th>
+              <th>Đvt</th>
+              <th>SL mua mới</th>
+              <th>Đơn giá</th>
+              <th>Thành tiền</th>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>Giấy vẽ A3 cao cấp</td>
+              <td>Xấp</td>
+              <td>10</td>
+              <td>85,000</td>
+              <td>850,000</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Màu nước 12 màu</td>
+              <td>Hộp</td>
+              <td>15</td>
+              <td>45,000</td>
+              <td>675,000</td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `;
+
+    const res = parseHtmlWordTable(sampleHtmlDoc);
+    assert.ok(res, "Phải parse thành công HTML Word table");
+    assert.strictEqual(res?.totalRows, 2);
+    assert.strictEqual(res?.validRows, 2);
+    assert.strictEqual(res?.items[0].name, "Giấy vẽ A3 cao cấp");
+    assert.strictEqual(res?.items[0].quantity, 10);
+    assert.strictEqual(res?.items[0].price, 85000);
+    assert.strictEqual(res?.items[1].name, "Màu nước 12 màu");
+    assert.strictEqual(res?.items[1].quantity, 15);
+    assert.strictEqual(res?.items[1].price, 45000);
+  });
 });
+
