@@ -99,6 +99,33 @@ export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: Ne
         },
       });
 
+      // 4. Update the matching RequestItem in sourceRequest
+      // Allocate the newly received quantity so it becomes ready for disbursement
+      const matchingRequestItem = await tx.requestItem.findFirst({
+        where: {
+          requestId: proposal.sourceRequestId,
+          OR: [
+            { itemId: targetItemId },
+            ...(proposal.itemId ? [{ itemId: proposal.itemId }] : []),
+            ...(proposal.proposedName ? [{ proposedName: proposal.proposedName }] : []),
+          ],
+        },
+      });
+
+      if (matchingRequestItem) {
+        const newAllocatedQty = matchingRequestItem.allocatedQty + recvQty;
+        const newShortfallQty = Math.max(0, matchingRequestItem.shortfallQty - recvQty);
+
+        await tx.requestItem.update({
+          where: { id: matchingRequestItem.id },
+          data: {
+            itemId: targetItemId,
+            allocatedQty: newAllocatedQty,
+            shortfallQty: newShortfallQty,
+          },
+        });
+      }
+
       return { item: updatedItem, proposal: updatedProposal };
     });
 

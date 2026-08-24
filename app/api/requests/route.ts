@@ -51,7 +51,7 @@ export const GET = requireAuth(async (req: NextRequest, user) => {
 export const POST = requireAuth(async (req: NextRequest, user) => {
   try {
     const body = await req.json();
-    const { purpose, neededDate, note, items } = body;
+    const { purpose, neededDate, note, items, themeId } = body;
 
     if (!purpose || !purpose.trim()) {
       return NextResponse.json(
@@ -81,6 +81,7 @@ export const POST = requireAuth(async (req: NextRequest, user) => {
         data: {
           requesterId: user.id,
           purpose: String(purpose).trim(),
+          themeId: themeId || null,
           neededDate: new Date(neededDate),
           note: note ? String(note).trim() : null,
           status: "pending",

@@ -7,6 +7,7 @@ import { useSettings, AVAILABLE_LOGO_ICONS, CategoryItem } from "@/components/se
 import { useToast } from "@/components/common/Toast";
 import { ConfirmModal } from "@/components/common/ConfirmModal";
 import { UserTable } from "@/components/users/UserTable";
+import { ThemesManager } from "@/components/settings/ThemesManager";
 import {
   Settings,
   Building2,
@@ -27,6 +28,7 @@ import {
   Image,
   AlertTriangle,
   Loader2,
+  Target,
 } from "lucide-react";
 
 interface UserProfile {
@@ -52,7 +54,7 @@ export default function AdminSettingsPage() {
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [activeTab, setActiveTab] = useState<"general" | "users" | "categories" | "warehouse">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "users" | "categories" | "themes" | "warehouse">("general");
 
   // Form state: General Settings
   const [schoolName, setSchoolName] = useState(settings.school_name);
@@ -293,6 +295,18 @@ export default function AdminSettingsPage() {
           >
             <Tags className="w-4 h-4" />
             <span>Danh mục đồ dùng ({categories.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("themes")}
+            className={`flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === "themes"
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <Target className="w-4 h-4" />
+            <span>Sự kiện & Chủ đề</span>
           </button>
 
           <button
@@ -641,7 +655,10 @@ export default function AdminSettingsPage() {
           </div>
         )}
 
-        {/* TAB 3: CẤU HÌNH KHO & QUY TẮC */}
+        {/* TAB: SỰ KIỆN & CHỦ ĐỀ HOẠT ĐỘNG */}
+        {activeTab === "themes" && <ThemesManager />}
+
+        {/* TAB 4: CẤU HÌNH KHO & QUY TẮC */}
         {activeTab === "warehouse" && (
           <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md bg-white max-w-2xl space-y-6">
             <div className="border-b border-slate-100 pb-4">

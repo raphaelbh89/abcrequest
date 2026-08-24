@@ -22,6 +22,7 @@ import {
   Recycle,
   Sparkles,
   Layers,
+  Target,
 } from "lucide-react";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { ChangePasswordModal } from "@/components/users/ChangePasswordModal";
@@ -127,10 +128,12 @@ export function Navbar({ user }: NavbarProps) {
   const isOperationsActive =
     pathname.startsWith("/requests") ||
     pathname.startsWith("/disbursements") ||
-    pathname.startsWith("/purchase-proposals");
+    pathname.startsWith("/purchase-proposals") ||
+    pathname.startsWith("/themes");
 
   const canViewRequests = !user || ["admin", "manager", "teacher"].includes(user.role);
   const canViewProposals = user && ["admin", "manager", "stocker"].includes(user.role);
+  const canManageThemes = user && ["admin", "manager"].includes(user.role);
   const canViewSettings = user?.role === "admin";
 
   const getRoleBadge = (role?: string) => {
@@ -378,6 +381,29 @@ export function Navbar({ user }: NavbarProps) {
                           </div>
                         </Link>
                       )}
+
+                      {canManageThemes && (
+                        <Link
+                          href="/themes"
+                          onClick={() => setIsOperationsDropdownOpen(false)}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                            pathname.startsWith("/themes")
+                              ? "bg-purple-50 text-purple-800 border border-purple-200/80 font-bold shadow-2xs"
+                              : "text-slate-700 hover:bg-purple-50/50 hover:text-purple-700"
+                          }`}
+                        >
+                          <div className="p-1.5 rounded-lg bg-purple-100 text-purple-700">
+                            <Target className="w-4 h-4 shrink-0" />
+                          </div>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <span className="whitespace-nowrap font-bold text-xs">Sự kiện & Chủ đề</span>
+                              <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-purple-100 text-purple-800 rounded">BGH</span>
+                            </div>
+                            <span className="text-[11px] text-slate-400 font-normal">Kế hoạch chung toàn trường</span>
+                          </div>
+                        </Link>
+                      )}
                     </div>
                   </div>
                 )}
@@ -570,6 +596,19 @@ export function Navbar({ user }: NavbarProps) {
               >
                 <ShoppingCart className="w-4 h-4 text-emerald-600" />
                 <span>Đề xuất mua</span>
+              </Link>
+            )}
+
+            {canManageThemes && (
+              <Link
+                href="/themes"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold pl-6 ${
+                  pathname.startsWith("/themes") ? "text-purple-700 bg-purple-50 border border-purple-200" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <Target className="w-4 h-4 text-purple-600" />
+                <span>Sự kiện & Chủ đề (BGH)</span>
               </Link>
             )}
 

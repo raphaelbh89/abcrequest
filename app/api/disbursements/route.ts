@@ -51,6 +51,9 @@ export const GET = requireRole(
                 items: true,
               },
             },
+            purchaseProposals: {
+              select: { id: true, status: true, qty: true, receivedQty: true, proposedName: true, itemId: true },
+            },
           },
           orderBy: { createdAt: "desc" },
         });

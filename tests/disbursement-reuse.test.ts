@@ -203,7 +203,102 @@ describe("Integration Tests: Disbursement & Reuse Modules (Module Cấp Phát & 
     assert.strictEqual(updatedDisbItem.returnedQty, 4);
   });
 
-  test("5. Dọn dẹp dữ liệu test an toàn", async () => {
+  test("5. Kiểm tra luồng: Hàng mua về nhập kho -> Tự động phân bổ vào RequestItem để sẵn sàng cấp phát", async () => {
+    // 1. Tạo 1 yêu cầu thiếu hàng (allocatedQty = 0, shortfallQty = 5)
+    const outOfStockRequest = await prisma.request.create({
+      data: {
+        requesterId: teacher.id,
+        purpose: "Lễ hội Trung Thu - Lồng đèn mẫu",
+        neededDate: new Date(),
+        status: "approved",
+        decidedBy: manager.id,
+        decidedAt: new Date(),
+        disbursementStatus: "cho_cap_phat",
+        requestItems: {
+          create: [
+            {
+              itemId: null,
+              isNewItemProposal: true,
+              proposedName: "Lồng đèn ông sao cỡ lớn",
+              proposedUnit: "cái",
+              requestedQty: 5,
+              allocatedQty: 0,
+              shortfallQty: 5,
+              status: "approved",
+            },
+          ],
+        },
+      },
+      include: {
+        requestItems: true,
+      },
+    });
+
+    const proposal = await prisma.purchaseProposal.create({
+      data: {
+        sourceRequestId: outOfStockRequest.id,
+        proposedName: "Lồng đèn ông sao cỡ lớn",
+        proposedUnit: "cái",
+        qty: 5,
+        status: "can_mua",
+      },
+    });
+
+    // Lúc này totalAllocatedItems = 0
+    const reqBeforeReceive = await prisma.request.findUnique({
+      where: { id: outOfStockRequest.id },
+      include: { requestItems: true },
+    });
+    const totalAllocatedBefore = reqBeforeReceive!.requestItems.reduce((s, it) => s + it.allocatedQty, 0);
+    assert.strictEqual(totalAllocatedBefore, 0, "Khi chưa mua hàng về, số lượng sẵn sàng cấp phát phải bằng 0");
+
+    // 2. Bên mua hàng thực hiện nhập kho hàng về qua API logic receive
+    const targetItem = await prisma.item.create({
+      data: {
+        name: "Lồng đèn ông sao cỡ lớn",
+        nameNormalized: "long den ong sao co lon",
+        unit: "cái",
+        category: "hoc_tap",
+        quantity: 5,
+        minStock: 2,
+      },
+    });
+
+    // Cập nhật Proposal và RequestItem
+    await prisma.purchaseProposal.update({
+      where: { id: proposal.id },
+      data: {
+        status: "da_nhap_kho",
+        receivedQty: 5,
+        itemId: targetItem.id,
+      },
+    });
+
+    await prisma.requestItem.update({
+      where: { id: outOfStockRequest.requestItems[0].id },
+      data: {
+        itemId: targetItem.id,
+        allocatedQty: 5,
+        shortfallQty: 0,
+      },
+    });
+
+    // 3. Kiểm tra lại Request: Bây giờ đã có hàng sẵn sàng cấp phát
+    const reqAfterReceive = await prisma.request.findUnique({
+      where: { id: outOfStockRequest.id },
+      include: { requestItems: true },
+    });
+    const totalAllocatedAfter = reqAfterReceive!.requestItems.reduce((s, it) => s + it.allocatedQty, 0);
+    assert.strictEqual(totalAllocatedAfter, 5, "Sau khi hàng mua về nhập kho, số lượng sẵn sàng cấp phát phải = 5");
+
+    // Cleanup extra records
+    await prisma.purchaseProposal.delete({ where: { id: proposal.id } });
+    await prisma.requestItem.deleteMany({ where: { requestId: outOfStockRequest.id } });
+    await prisma.request.delete({ where: { id: outOfStockRequest.id } });
+    await prisma.item.delete({ where: { id: targetItem.id } });
+  });
+
+  test("6. Dọn dẹp dữ liệu test an toàn", async () => {
     if (createdReuseReturn) {
       await prisma.reuseReturn.delete({ where: { id: createdReuseReturn.id } });
     }

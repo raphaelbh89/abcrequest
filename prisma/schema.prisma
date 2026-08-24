@@ -66,11 +66,29 @@ model Request {
   decidedByUser      User?     @relation("DecidedRequests", fields: [decidedBy], references: [id])
   rejectReason       String?   @map("reject_reason")
 
+  themeId            String?   @map("theme_id")
+  theme              EventTheme? @relation(fields: [themeId], references: [id])
   requestItems      RequestItem[]
   purchaseProposals PurchaseProposal[]
   disbursements     Disbursement[]
 
   @@map("requests")
+}
+
+model EventTheme {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  icon        String?   @default("🎯")
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  requests    Request[]
+
+  @@map("event_themes")
 }
 
 model RequestItem {

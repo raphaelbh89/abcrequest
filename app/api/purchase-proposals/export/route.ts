@@ -4,9 +4,20 @@ import { requireRole } from "@/lib/auth-guards";
 import ExcelJS from "exceljs";
 
 // GET /api/purchase-proposals/export - Admin, Manager, Stocker
-export const GET = requireRole(["admin", "manager", "stocker"], async (_req: NextRequest) => {
+export const GET = requireRole(["admin", "manager", "stocker"], async (req: NextRequest) => {
   try {
+    const { searchParams } = new URL(req.url);
+    const themeFilter = searchParams.get("theme");
+
+    const whereClause: any = {};
+    if (themeFilter && themeFilter !== "all") {
+      whereClause.sourceRequest = {
+        purpose: themeFilter,
+      };
+    }
+
     const proposals = await prisma.purchaseProposal.findMany({
+      where: whereClause,
       include: {
         item: true,
         sourceRequest: {
@@ -128,8 +139,8 @@ export const GET = requireRole(["admin", "manager", "stocker"], async (_req: Nex
     worksheet.getCell("A5").font = { name: "Times New Roman", size: 12, bold: true };
 
     worksheet.mergeCells("A6:E6");
-    worksheet.getCell("A6").value = "1. Đơn vị yêu cầu: Các khối lớp & Tổ chuyên môn Mầm non";
-    worksheet.getCell("A6").font = { name: "Times New Roman", size: 11 };
+    worksheet.getCell("A6").value = `1. Đơn vị / Chủ đề yêu cầu: ${themeFilter && themeFilter !== "all" ? themeFilter : "Các khối lớp & Tổ chuyên môn Mầm non"}`;
+    worksheet.getCell("A6").font = { name: "Times New Roman", size: 11, bold: Boolean(themeFilter && themeFilter !== "all") };
 
     worksheet.mergeCells("F6:H6");
     worksheet.getCell("F6").value = `Thời gian đáp ứng: ${new Date().toLocaleDateString("vi-VN")}`;
@@ -326,11 +337,13 @@ export const GET = requireRole(["admin", "manager", "stocker"], async (_req: Nex
 
     const buffer = await workbook.xlsx.writeBuffer();
 
+    const safeThemeName = themeFilter && themeFilter !== "all" ? `_${encodeURIComponent(themeFilter.replace(/[\/\\?%*:|"<>]/g, "_").slice(0, 30))}` : "";
+
     return new NextResponse(buffer as any, {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="YEU_CAU_MUA_SAM_${new Date().toISOString().slice(0, 10)}.xlsx"`,
+        "Content-Disposition": `attachment; filename="YEU_CAU_MUA_SAM${safeThemeName}_${new Date().toISOString().slice(0, 10)}.xlsx"`,
       },
     });
   } catch (error) {

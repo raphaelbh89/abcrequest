@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { ItemSearchSelector } from "@/components/common/ItemSearchSelector";
+import { ThemeCombobox } from "@/components/requests/ThemeCombobox";
 import {
   fileOrBlobToCompressedDataUrl,
   handleClipboardImagePaste,
@@ -81,6 +82,7 @@ export function RequestForm() {
   // Form states
   const [mounted, setMounted] = useState(false);
   const [purpose, setPurpose] = useState("");
+  const [themeId, setThemeId] = useState<string | undefined>(undefined);
   const [neededDate, setNeededDate] = useState("");
   const [note, setNote] = useState("");
 
@@ -266,6 +268,7 @@ export function RequestForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           purpose: purpose.trim(),
+          themeId: themeId || null,
           neededDate,
           note: note.trim() || null,
           items: selectedItems.map((si) => ({
@@ -329,14 +332,15 @@ export function RequestForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                Chủ đề / Hoạt động sử dụng <span className="text-rose-600">*</span>
+                Chủ đề / Kế hoạch sự kiện <span className="text-rose-600">*</span>
               </label>
-              <input
-                type="text"
+              <ThemeCombobox
                 value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
-                placeholder="VD: Trang trí góc Mùa xuân, Bé làm quen tạo hình..."
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-medium"
+                onChange={(val, tId) => {
+                  setPurpose(val);
+                  setThemeId(tId);
+                }}
+                placeholder="Chọn sự kiện trường hoặc gõ chủ đề lớp..."
                 required
               />
             </div>
