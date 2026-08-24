@@ -49,9 +49,30 @@ export const GET = requireRole(
           await prisma.eventTheme.create({
             data: {
               ...dt,
-              createdAt: new Date(baseTime + (DEFAULT_THEMES.length - i) * 1000),
+              createdAt: new Date(baseTime - i * 60000),
             },
           });
+        }
+      } else {
+        // Tự động điều chỉnh các chủ đề mặc định ban đầu nếu đang bị ngược thứ tự
+        const trungThu = await prisma.eventTheme.findFirst({
+          where: { name: "Lễ hội Trung Thu 2026" },
+        });
+        const hoiKhoe = await prisma.eventTheme.findFirst({
+          where: { name: "Hội Khỏe Măng Non & Thể Dục Vận Động" },
+        });
+
+        if (trungThu && hoiKhoe && new Date(trungThu.createdAt).getTime() <= new Date(hoiKhoe.createdAt).getTime()) {
+          const baseTime = Date.now() - 3600000; // 1 giờ trước
+          for (let i = 0; i < DEFAULT_THEMES.length; i++) {
+            const dt = DEFAULT_THEMES[i];
+            await prisma.eventTheme.updateMany({
+              where: { name: dt.name },
+              data: {
+                createdAt: new Date(baseTime - i * 60000),
+              },
+            });
+          }
         }
       }
 
