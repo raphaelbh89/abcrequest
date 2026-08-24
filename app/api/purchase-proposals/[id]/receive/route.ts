@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/auth-guards";
+import { normalizeVietnamese } from "@/lib/search";
 
-// PATCH /api/purchase-proposals/[id]/receive - Admin, Manager, Stocker
-export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: NextRequest, user, context?: any) => {
+// Handler xử lý nhập kho từ đề xuất mua sắm
+async function handleReceive(req: NextRequest, user: any, context?: any) {
   try {
     const params = await context?.params;
     const proposalId = params?.id;
@@ -27,7 +28,11 @@ export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: Ne
       where: { id: proposalId },
       include: {
         item: true,
-        sourceRequest: true,
+        sourceRequest: {
+          include: {
+            requestItems: true,
+          },
+        },
       },
     });
 
@@ -42,25 +47,35 @@ export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: Ne
       );
     }
 
+    const matchingReqItem = proposal.sourceRequest.requestItems.find(
+      (i) =>
+        (proposal.itemId && i.itemId === proposal.itemId) ||
+        (proposal.proposedName && i.proposedName === proposal.proposedName)
+    );
+
     const updatedResult = await prisma.$transaction(async (tx) => {
       let targetItemId: string;
       let updatedItem: any;
 
       if (!proposal.itemId) {
-        // Tạo mặt hàng vào kho nếu chưa có itemId
+        // 1. Tạo mặt hàng mới vào kho nếu là đề xuất mua mới
+        const itemName = proposal.proposedName || "Mặt hàng mua mới";
         updatedItem = await tx.item.create({
           data: {
-            name: proposal.proposedName || "Mặt hàng mua mới",
-            unit: proposal.proposedUnit || "cái",
+            name: itemName,
+            nameNormalized: normalizeVietnamese(itemName),
+            unit: proposal.proposedUnit || matchingReqItem?.proposedUnit || "cái",
             category: "hoc_tap",
             quantity: recvQty,
             minStock: 5,
+            price: matchingReqItem?.proposedPrice || null,
+            imageUrl: matchingReqItem?.proposedImageUrl || null,
           },
         });
         targetItemId = updatedItem.id;
       } else {
         targetItemId = proposal.itemId;
-        // 1. Add physical stock to item.quantity
+        // 1. Cộng dồn số lượng tồn kho vật lý
         updatedItem = await tx.item.update({
           where: { id: targetItemId },
           data: {
@@ -69,7 +84,7 @@ export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: Ne
         });
       }
 
-      // 2. Log in stock_transactions
+      // 2. Ghi nhật ký vào bảng stock_transactions
       await tx.stockTransaction.create({
         data: {
           itemId: targetItemId,
@@ -77,14 +92,17 @@ export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: Ne
           quantityChange: recvQty,
           referenceId: proposal.id,
           performedBy: user.id,
-          note: note ? String(note).trim() : `Nhập kho từ đề xuất mua (Yêu cầu: "${proposal.sourceRequest.purpose}")`,
+          note: note
+            ? String(note).trim()
+            : `Nhập kho từ đề xuất mua (Chủ đề: "${proposal.sourceRequest.purpose}")`,
         },
       });
 
-      // 3. Mark proposal as da_nhap_kho
+      // 3. Cập nhật trạng thái đề xuất mua thành da_nhap_kho
       const updatedProposal = await tx.purchaseProposal.update({
         where: { id: proposal.id },
         data: {
+          itemId: targetItemId,
           status: "da_nhap_kho",
           receivedQty: recvQty,
           resolvedAt: new Date(),
@@ -99,25 +117,13 @@ export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: Ne
         },
       });
 
-      // 4. Update the matching RequestItem in sourceRequest
-      // Allocate the newly received quantity so it becomes ready for disbursement
-      const matchingRequestItem = await tx.requestItem.findFirst({
-        where: {
-          requestId: proposal.sourceRequestId,
-          OR: [
-            { itemId: targetItemId },
-            ...(proposal.itemId ? [{ itemId: proposal.itemId }] : []),
-            ...(proposal.proposedName ? [{ proposedName: proposal.proposedName }] : []),
-          ],
-        },
-      });
-
-      if (matchingRequestItem) {
-        const newAllocatedQty = matchingRequestItem.allocatedQty + recvQty;
-        const newShortfallQty = Math.max(0, matchingRequestItem.shortfallQty - recvQty);
+      // 4. Cập nhật RequestItem liên kết trong phiếu yêu cầu nguồn
+      if (matchingReqItem) {
+        const newAllocatedQty = matchingReqItem.allocatedQty + recvQty;
+        const newShortfallQty = Math.max(0, matchingReqItem.shortfallQty - recvQty);
 
         await tx.requestItem.update({
-          where: { id: matchingRequestItem.id },
+          where: { id: matchingReqItem.id },
           data: {
             itemId: targetItemId,
             allocatedQty: newAllocatedQty,
@@ -130,15 +136,20 @@ export const PATCH = requireRole(["admin", "manager", "stocker"], async (req: Ne
     });
 
     return NextResponse.json({
+      success: true,
       message: `Đã nhập kho +${recvQty} ${updatedResult.item.unit} cho mặt hàng "${updatedResult.item.name}"`,
       proposal: updatedResult.proposal,
       item: updatedResult.item,
     });
-  } catch (error) {
-    console.error("PATCH /api/purchase-proposals/[id]/receive error:", error);
+  } catch (error: any) {
+    console.error("Receive purchase proposal error:", error);
     return NextResponse.json(
-      { error: "Lỗi hệ thống khi nhập kho từ đề xuất mua" },
+      { error: error?.message || "Lỗi hệ thống khi nhập kho từ đề xuất mua" },
       { status: 500 }
     );
   }
-});
+}
+
+// Hỗ trợ cả POST và PATCH
+export const POST = requireRole(["admin", "manager", "stocker"], handleReceive);
+export const PATCH = requireRole(["admin", "manager", "stocker"], handleReceive);

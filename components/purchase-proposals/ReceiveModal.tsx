@@ -74,18 +74,23 @@ export function ReceiveModal({ isOpen, onClose, onSuccess, proposal }: ReceiveMo
         }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        // response might not be JSON
+      }
 
       if (!res.ok) {
-        setError(data.error || "Không thể thực hiện nhập kho.");
+        setError(data.error || `Lỗi máy chủ (${res.status}): Không thể thực hiện nhập kho.`);
         setLoading(false);
         return;
       }
 
       onSuccess();
       onClose();
-    } catch {
-      setError("Lỗi kết nối máy chủ. Vui lòng thử lại.");
+    } catch (err: any) {
+      setError(err?.message || "Lỗi kết nối máy chủ. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
