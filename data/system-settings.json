@@ -1,10 +1,13 @@
 {
-  "school_name": "Trường Mầm Non Hoa Sen Test",
-  "app_title": "Kho Hoa Sen",
-  "subtitle": "Hệ thống quản lý giáo cụ",
-  "logo_icon": "Heart",
+  "school_name": "Trường Mầm Non Họa Mi Test 1787560735324",
+  "app_title": "Kho Mầm Non ABC",
+  "subtitle": "Quản lý đồ dùng & giáo cụ",
+  "logo_icon": "School",
   "logo_url": "",
-  "phone": "0987 654 321",
-  "address": "Số 99 Đường Giải Phóng, Hà Nội",
-  "default_min_stock": "10"
+  "phone": "0251 8611 999",
+  "address": "N5 KDC P. Thống Nhất, P. Thống Nhất, TP. Đồng Nai",
+  "default_min_stock": "5",
+  "gemini_api_key": "",
+  "ai_model": "gemini-3.6-flash",
+  "ai_search_enabled": "true"
 }
