@@ -406,7 +406,7 @@ export function RequestForm() {
           <div className="w-full">
             <ItemSearchSelector
               className="w-full"
-              placeholder="🔍 Gõ tên đồ dùng cần tìm (VD: Ruy băng, Giấy A4, Kéo, Đất nặn...)"
+              placeholder="Gõ tên đồ dùng cần tìm (VD: Ruy băng, Giấy A4, Kéo, Đất nặn...)"
               onSelectInternalItem={handleSelectInternalItem}
               onSelectExternalProposal={handleSelectExternalProposal}
               excludeItemIds={selectedItems.map((si) => si.itemId).filter(Boolean) as string[]}

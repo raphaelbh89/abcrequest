@@ -340,7 +340,7 @@ export function ItemSearchSelector({
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-                      <span>✨ Gợi ý bằng AI Gemini</span>
+                      <span>Gợi ý bằng AI Gemini</span>
                     </>
                   )}
                 </button>
@@ -360,7 +360,7 @@ export function ItemSearchSelector({
                   ) : (
                     <>
                       <Globe className="w-4 h-4 text-blue-600" />
-                      <span>🌐 Tìm Shopee / Nhà sách</span>
+                      <span>Tìm Shopee / Nhà sách</span>
                     </>
                   )}
                 </button>

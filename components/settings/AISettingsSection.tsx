@@ -12,7 +12,6 @@ import {
   EyeOff,
   Zap,
   Info,
-  ShieldCheck,
   Save,
 } from "lucide-react";
 import { useToast } from "@/components/common/Toast";

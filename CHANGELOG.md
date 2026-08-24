@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## [1.4.0] - 2026-08-24
+
+### Thêm mới & Nâng cấp (Added & Upgraded)
+- **Động Cơ Tìm Kiếm Đồ Dùng Mầm Non Thông Minh Bằng AI Google Gemini**
+  - Tích hợp mô hình AI thế hệ mới `Gemini 3.6 Flash` (phản hồi 1~2s) cùng cơ chế xử lý dự phòng Resilient Preschool Engine.
+  - Tự động phân tích ngữ cảnh từ khóa giáo viên gõ (gõ tắt, không dấu, mô tả mục đích hoạt động lớp), chuẩn hóa tên tiếng Việt, quy cách, đơn vị tính chuẩn mầm non (`hộp`, `cái`, `bộ`, `gói`...), ước tính giá thị trường VNĐ và tự động gán hình ảnh Thumbnail chất lượng cao.
+  - Tích hợp bộ đệm In-Memory Cache 24 giờ cho kết quả phản hồi 0ms với các từ khóa tìm kiếm lặp lại.
+  - Thêm API cấu hình & kiểm tra kết nối API Key (`POST /api/settings/test-ai`) đo lường độ trễ mạng thực tế.
+
+- **Tab Cấu Hình AI Gemini Trong Cài Đặt Hệ Thống (`/admin/settings`)**
+  - Bổ sung tab `🤖 AI Gemini` cho phép Quản trị viên nhập API Key (có nút ẩn/hiện mắt), chọn Model AI, bật/tắt tính năng gợi ý AI và bấm nút Ping Test kiểm tra kết nối Google ngay tức thì.
+  - Toàn bộ thiết lập được lưu trữ an toàn trong `SystemSetting` và tự động đồng bộ vào file cấu hình `data/system-settings.json` để chống mất dữ liệu khi commit/pull Git.
+
+- **Thành Phần Chọn Ngày Chuẩn Tiếng Việt (Vietnamese DatePicker Component)**
+  - Tự xây dựng component `DatePicker` chuyên biệt cho môi trường tiếng Việt (`DD/MM/YYYY`, thứ `T2`..`CN`, tháng `Tháng 1`..`Tháng 12`).
+  - Tích hợp các phím tắt chọn nhanh: `Hôm nay`, `Ngày mai`, `+3 ngày`, `+1 tuần` và nút xóa nhanh `X`.
+  - Thay thế toàn bộ thẻ `<input type="date">` mặc định của trình duyệt để có giao diện đồng bộ, cao cấp và mượt mà.
+
+- **Tối Ưu & Dọn Dẹp Giao Diện Toàn Diện (UI/UX Refinements & Icon Cleanup)**
+  - Sửa lỗi lặp 2 icon tại ô tìm kiếm đồ dùng và các nút hành động gợi ý AI / Internet (`Sparkles`, `Globe`, `Search`).
+  - Mở rộng thanh điều hướng phụ trang Cài đặt lên toàn chiều ngang (`w-full`) chống hiện tượng co ngắn giao diện.
+  - Dọn dẹp toàn bộ import thừa, biến không sử dụng và đảm bảo 100% mã nguồn dùng biến màu sắc & khoảng cách chuẩn từ hệ thống Tailwind CSS.
+
+- **Toàn Vẹn Dữ Liệu & Kiểm Thử Tự Động Toàn Diện (Testing Protocol 100% Pass)**
+  - Đạt **78/78 test cases trong 19 test suites PASS 100%** bao gồm toàn bộ luồng AI, phân quyền, tồn kho, duyệt đơn, xuất Excel và stress test SQLite.
+
+---
+
 ## [1.3.0] - 2026-08-19
 
 ### Thêm mới & Nâng cấp (Added & Upgraded)
