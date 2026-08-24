@@ -110,4 +110,21 @@ describe("Unit & Integration Tests: School Logo Upload & Excel Integration", () 
     assert.strictEqual(embedded, true, "Chèn thành công logo vào Worksheet Excel");
     assert.ok(worksheet.getImages().length > 0, "Worksheet có chứa hình ảnh");
   });
+
+  test("6. Kiểm tra Route Handler GET /uploads/[filename] phục vụ ảnh trực tiếp", async () => {
+    const { GET: getUploadFile } = await import("../app/uploads/[filename]/route");
+    const settings = (await import("../lib/system-settings-file")).readSystemSettingsFromFile();
+    const logoUrl = settings.logo_url;
+    const filename = logoUrl.replace("/uploads/", "");
+
+    const req = new NextRequest(`http://localhost:3000/uploads/${filename}`);
+    const res = await getUploadFile(req, {
+      params: Promise.resolve({ filename }),
+    });
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.headers.get("Content-Type"), "image/png");
+    const blob = await res.blob();
+    assert.ok(blob.size > 0);
+  });
 });
