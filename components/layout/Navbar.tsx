@@ -48,6 +48,43 @@ export function Navbar({ user }: NavbarProps) {
   const warehouseDropdownRef = useRef<HTMLDivElement>(null);
   const operationsDropdownRef = useRef<HTMLDivElement>(null);
   
+  const warehouseTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const operationsTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleWarehouseMouseEnter = () => {
+    if (warehouseTimerRef.current) {
+      clearTimeout(warehouseTimerRef.current);
+      warehouseTimerRef.current = null;
+    }
+    setIsWarehouseDropdownOpen(true);
+  };
+
+  const handleWarehouseMouseLeave = () => {
+    if (warehouseTimerRef.current) {
+      clearTimeout(warehouseTimerRef.current);
+    }
+    warehouseTimerRef.current = setTimeout(() => {
+      setIsWarehouseDropdownOpen(false);
+    }, 200);
+  };
+
+  const handleOperationsMouseEnter = () => {
+    if (operationsTimerRef.current) {
+      clearTimeout(operationsTimerRef.current);
+      operationsTimerRef.current = null;
+    }
+    setIsOperationsDropdownOpen(true);
+  };
+
+  const handleOperationsMouseLeave = () => {
+    if (operationsTimerRef.current) {
+      clearTimeout(operationsTimerRef.current);
+    }
+    operationsTimerRef.current = setTimeout(() => {
+      setIsOperationsDropdownOpen(false);
+    }, 200);
+  };
+  
   const { settings, renderLogoIcon } = useSettings();
 
   const handleLogout = async () => {
@@ -56,7 +93,13 @@ export function Navbar({ user }: NavbarProps) {
     router.refresh();
   };
 
-  // Close dropdowns on outside click
+  // Close dropdowns on outside click or route change
+  useEffect(() => {
+    setIsWarehouseDropdownOpen(false);
+    setIsOperationsDropdownOpen(false);
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -73,7 +116,11 @@ export function Navbar({ user }: NavbarProps) {
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      if (warehouseTimerRef.current) clearTimeout(warehouseTimerRef.current);
+      if (operationsTimerRef.current) clearTimeout(operationsTimerRef.current);
+    };
   }, []);
 
   const isWarehouseActive = pathname.startsWith("/inventory") || pathname.startsWith("/reuse");
@@ -150,8 +197,8 @@ export function Navbar({ user }: NavbarProps) {
               <div
                 ref={warehouseDropdownRef}
                 className="relative"
-                onMouseEnter={() => setIsWarehouseDropdownOpen(true)}
-                onMouseLeave={() => setIsWarehouseDropdownOpen(false)}
+                onMouseEnter={handleWarehouseMouseEnter}
+                onMouseLeave={handleWarehouseMouseLeave}
               >
                 <button
                   type="button"
@@ -170,65 +217,71 @@ export function Navbar({ user }: NavbarProps) {
                   )}
                 </button>
 
-                {/* Dropdown Popover */}
+                {/* Dropdown Popover with hover bridge */}
                 {isWarehouseDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-64 p-1.5 glass-dropdown rounded-2xl border border-slate-200/90 shadow-xl z-50 bg-white/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 space-y-1">
-                    <Link
-                      href="/inventory"
-                      onClick={() => setIsWarehouseDropdownOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                        pathname === "/inventory"
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold shadow-2xs"
-                          : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
-                      }`}
-                    >
-                      <div className="p-1.5 rounded-lg bg-emerald-100/70 text-emerald-700">
-                        <Package className="w-4 h-4 shrink-0" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="whitespace-nowrap font-bold text-xs">Danh sách kho tồn</span>
-                        <span className="text-[11px] text-slate-400 font-normal">Mặt hàng & số lượng thật</span>
-                      </div>
-                    </Link>
-
-                    <Link
-                      href="/inventory/transactions"
-                      onClick={() => setIsWarehouseDropdownOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                        pathname === "/inventory/transactions"
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold shadow-2xs"
-                          : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
-                      }`}
-                    >
-                      <div className="p-1.5 rounded-lg bg-slate-100 text-slate-600">
-                        <History className="w-4 h-4 shrink-0" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="whitespace-nowrap font-bold text-xs">Lịch sử xuất / nhập kho</span>
-                        <span className="text-[11px] text-slate-400 font-normal">Biến động kho chi tiết</span>
-                      </div>
-                    </Link>
-
-                    <Link
-                      href="/reuse"
-                      onClick={() => setIsWarehouseDropdownOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                        pathname === "/reuse"
-                          ? "bg-teal-50 text-teal-800 border border-teal-200/80 font-bold shadow-2xs"
-                          : "text-slate-700 hover:bg-teal-50/50 hover:text-teal-700"
-                      }`}
-                    >
-                      <div className="p-1.5 rounded-lg bg-teal-100 text-teal-700">
-                        <Recycle className="w-4 h-4 shrink-0" />
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5">
-                          <span className="whitespace-nowrap font-bold text-xs">Tái sử dụng đồ dùng</span>
-                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-teal-100 text-teal-800 rounded">Mới</span>
+                  <div
+                    className="absolute top-full left-0 pt-2 w-64 z-50 animate-in fade-in zoom-in-95 duration-150"
+                    onMouseEnter={handleWarehouseMouseEnter}
+                    onMouseLeave={handleWarehouseMouseLeave}
+                  >
+                    <div className="p-1.5 glass-dropdown rounded-2xl border border-slate-200/90 shadow-xl bg-white/95 backdrop-blur-xl space-y-1">
+                      <Link
+                        href="/inventory"
+                        onClick={() => setIsWarehouseDropdownOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                          pathname === "/inventory"
+                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold shadow-2xs"
+                            : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
+                        }`}
+                      >
+                        <div className="p-1.5 rounded-lg bg-emerald-100/70 text-emerald-700">
+                          <Package className="w-4 h-4 shrink-0" />
                         </div>
-                        <span className="text-[11px] text-slate-400 font-normal">Thu hồi & tiết kiệm ngân sách</span>
-                      </div>
-                    </Link>
+                        <div className="flex flex-col">
+                          <span className="whitespace-nowrap font-bold text-xs">Danh sách kho tồn</span>
+                          <span className="text-[11px] text-slate-400 font-normal">Mặt hàng & số lượng thật</span>
+                        </div>
+                      </Link>
+
+                      <Link
+                        href="/inventory/transactions"
+                        onClick={() => setIsWarehouseDropdownOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                          pathname === "/inventory/transactions"
+                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold shadow-2xs"
+                            : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
+                        }`}
+                      >
+                        <div className="p-1.5 rounded-lg bg-slate-100 text-slate-600">
+                          <History className="w-4 h-4 shrink-0" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="whitespace-nowrap font-bold text-xs">Lịch sử xuất / nhập kho</span>
+                          <span className="text-[11px] text-slate-400 font-normal">Biến động kho chi tiết</span>
+                        </div>
+                      </Link>
+
+                      <Link
+                        href="/reuse"
+                        onClick={() => setIsWarehouseDropdownOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                          pathname === "/reuse"
+                            ? "bg-teal-50 text-teal-800 border border-teal-200/80 font-bold shadow-2xs"
+                            : "text-slate-700 hover:bg-teal-50/50 hover:text-teal-700"
+                        }`}
+                      >
+                        <div className="p-1.5 rounded-lg bg-teal-100 text-teal-700">
+                          <Recycle className="w-4 h-4 shrink-0" />
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1.5">
+                            <span className="whitespace-nowrap font-bold text-xs">Tái sử dụng đồ dùng</span>
+                            <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-teal-100 text-teal-800 rounded">Mới</span>
+                          </div>
+                          <span className="text-[11px] text-slate-400 font-normal">Thu hồi & tiết kiệm ngân sách</span>
+                        </div>
+                      </Link>
+                    </div>
                   </div>
                 )}
               </div>
@@ -237,8 +290,8 @@ export function Navbar({ user }: NavbarProps) {
               <div
                 ref={operationsDropdownRef}
                 className="relative"
-                onMouseEnter={() => setIsOperationsDropdownOpen(true)}
-                onMouseLeave={() => setIsOperationsDropdownOpen(false)}
+                onMouseEnter={handleOperationsMouseEnter}
+                onMouseLeave={handleOperationsMouseLeave}
               >
                 <button
                   type="button"
@@ -257,69 +310,75 @@ export function Navbar({ user }: NavbarProps) {
                   )}
                 </button>
 
-                {/* Dropdown Popover */}
+                {/* Dropdown Popover with hover bridge */}
                 {isOperationsDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-64 p-1.5 glass-dropdown rounded-2xl border border-slate-200/90 shadow-xl z-50 bg-white/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 space-y-1">
-                    {canViewRequests && (
+                  <div
+                    className="absolute top-full left-0 pt-2 w-64 z-50 animate-in fade-in zoom-in-95 duration-150"
+                    onMouseEnter={handleOperationsMouseEnter}
+                    onMouseLeave={handleOperationsMouseLeave}
+                  >
+                    <div className="p-1.5 glass-dropdown rounded-2xl border border-slate-200/90 shadow-xl bg-white/95 backdrop-blur-xl space-y-1">
+                      {canViewRequests && (
+                        <Link
+                          href="/requests"
+                          onClick={() => setIsOperationsDropdownOpen(false)}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                            pathname.startsWith("/requests")
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold shadow-2xs"
+                              : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
+                          }`}
+                        >
+                          <div className="p-1.5 rounded-lg bg-emerald-100/70 text-emerald-700">
+                            <FileText className="w-4 h-4 shrink-0" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="whitespace-nowrap font-bold text-xs">Yêu cầu đồ dùng</span>
+                            <span className="text-[11px] text-slate-400 font-normal">Tạo & duyệt phiếu giáo viên</span>
+                          </div>
+                        </Link>
+                      )}
+
                       <Link
-                        href="/requests"
+                        href="/disbursements"
                         onClick={() => setIsOperationsDropdownOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                          pathname.startsWith("/requests")
+                          pathname.startsWith("/disbursements")
                             ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold shadow-2xs"
                             : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
                         }`}
                       >
-                        <div className="p-1.5 rounded-lg bg-emerald-100/70 text-emerald-700">
-                          <FileText className="w-4 h-4 shrink-0" />
+                        <div className="p-1.5 rounded-lg bg-teal-100 text-teal-700">
+                          <PackageCheck className="w-4 h-4 shrink-0" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="whitespace-nowrap font-bold text-xs">Yêu cầu đồ dùng</span>
-                          <span className="text-[11px] text-slate-400 font-normal">Tạo & duyệt phiếu giáo viên</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="whitespace-nowrap font-bold text-xs">Cấp phát đồ dùng</span>
+                            <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded">Mới</span>
+                          </div>
+                          <span className="text-[11px] text-slate-400 font-normal">Bàn giao & in phiếu nhận</span>
                         </div>
                       </Link>
-                    )}
 
-                    <Link
-                      href="/disbursements"
-                      onClick={() => setIsOperationsDropdownOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                        pathname.startsWith("/disbursements")
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold shadow-2xs"
-                          : "text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
-                      }`}
-                    >
-                      <div className="p-1.5 rounded-lg bg-teal-100 text-teal-700">
-                        <PackageCheck className="w-4 h-4 shrink-0" />
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5">
-                          <span className="whitespace-nowrap font-bold text-xs">Cấp phát đồ dùng</span>
-                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded">Mới</span>
-                        </div>
-                        <span className="text-[11px] text-slate-400 font-normal">Bàn giao & in phiếu nhận</span>
-                      </div>
-                    </Link>
-
-                    {canViewProposals && (
-                      <Link
-                        href="/purchase-proposals"
-                        onClick={() => setIsOperationsDropdownOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                          pathname.startsWith("/purchase-proposals")
-                            ? "bg-amber-50 text-amber-800 border border-amber-200/80 font-bold shadow-2xs"
-                            : "text-slate-700 hover:bg-amber-50/50 hover:text-amber-700"
-                        }`}
-                      >
-                        <div className="p-1.5 rounded-lg bg-amber-100 text-amber-700">
-                          <ShoppingCart className="w-4 h-4 shrink-0" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="whitespace-nowrap font-bold text-xs">Đề xuất mua sắm</span>
-                          <span className="text-[11px] text-slate-400 font-normal">Mua bổ sung khi kho thiếu</span>
-                        </div>
-                      </Link>
-                    )}
+                      {canViewProposals && (
+                        <Link
+                          href="/purchase-proposals"
+                          onClick={() => setIsOperationsDropdownOpen(false)}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                            pathname.startsWith("/purchase-proposals")
+                              ? "bg-amber-50 text-amber-800 border border-amber-200/80 font-bold shadow-2xs"
+                              : "text-slate-700 hover:bg-amber-50/50 hover:text-amber-700"
+                          }`}
+                        >
+                          <div className="p-1.5 rounded-lg bg-amber-100 text-amber-700">
+                            <ShoppingCart className="w-4 h-4 shrink-0" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="whitespace-nowrap font-bold text-xs">Đề xuất mua sắm</span>
+                            <span className="text-[11px] text-slate-400 font-normal">Mua bổ sung khi kho thiếu</span>
+                          </div>
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
