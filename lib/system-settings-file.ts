@@ -12,6 +12,9 @@ export const DEFAULT_SYSTEM_SETTINGS: Record<string, string> = {
   phone: "024 3852 1199",
   address: "Số 128 Đường Hoa Hồng, Quận Cầu Giấy, Hà Nội",
   default_min_stock: "5",
+  gemini_api_key: "",
+  ai_model: "gemini-3.6-flash",
+  ai_search_enabled: "true",
 };
 
 /**

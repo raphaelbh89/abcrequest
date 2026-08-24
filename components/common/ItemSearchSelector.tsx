@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { SearchResultItem } from "@/lib/search";
 import { ExternalSearchResult } from "@/lib/external-search";
+import { AISearchResultItem } from "@/lib/ai-search-types";
 
 export interface ItemSearchSelectorProps {
   onSelectInternalItem: (item: {
@@ -58,6 +59,11 @@ export function ItemSearchSelector({
   const [externalResults, setExternalResults] = useState<ExternalSearchResult[]>([]);
   const [externalError, setExternalError] = useState<string | null>(null);
   const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
+
+  // AI Gemini search states
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [aiResults, setAiResults] = useState<AISearchResultItem[]>([]);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -89,6 +95,8 @@ export function ItemSearchSelector({
     setIsOpen(true);
     setExternalResults([]);
     setExternalError(null);
+    setAiResults([]);
+    setAiError(null);
     setShowExternalOption(true); // Luôn cho phép hiển thị nút gợi ý mở rộng
 
     const timer = setTimeout(async () => {
@@ -109,7 +117,30 @@ export function ItemSearchSelector({
     return () => clearTimeout(timer);
   }, [query]);
 
-  // 2. Khi người dùng CHỦ ĐỘNG bấm "Tìm gợi ý mở rộng"
+  // 2. Khi người dùng bấm "Tìm kiếm thông minh bằng AI Gemini"
+  const handleTriggerAISearch = async () => {
+    if (!query.trim()) return;
+    setLoadingAI(true);
+    setAiError(null);
+
+    try {
+      const res = await fetch(`/api/search/ai?q=${encodeURIComponent(query.trim())}`);
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setAiError(data.error || "Không thể lấy gợi ý từ AI.");
+        return;
+      }
+
+      setAiResults(data.results || []);
+    } catch {
+      setAiError("Lỗi kết nối khi gọi AI Gemini.");
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
+  // 3. Khi người dùng CHỦ ĐỘNG bấm "Tìm gợi ý mở rộng (Shopee/Nhà sách)"
   const handleTriggerExternalSearch = async () => {
     if (!query.trim()) return;
     setLoadingExternal(true);
@@ -267,44 +298,220 @@ export function ItemSearchSelector({
           )}
 
           {/* ========================================================= */}
-          {/* 2. NÚT CHỦ ĐỘNG XÁC NHẬN "TÌM GỢI Ý MỞ RỘNG" (LUÔN HIỆN KHI CẦN) */}
+          {/* 2. NÚT CHỦ ĐỘNG GỢI Ý BẰNG AI & INTERNET */}
           {/* ========================================================= */}
-          {showExternalOption && !loadingExternal && externalResults.length === 0 && (
-            <div className={`p-4 rounded-2xl border transition-all ${
-              filteredInternalResults.length > 0
-                ? "bg-indigo-50/50 border-indigo-200/70"
-                : "bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-blue-200/80 space-y-3"
-            }`}>
+          {showExternalOption && (
+            <div
+              className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                filteredInternalResults.length > 0
+                  ? "bg-purple-50/40 border-purple-200/70"
+                  : "bg-gradient-to-r from-purple-50/90 via-indigo-50/80 to-blue-50/70 border-purple-200/90"
+              }`}
+            >
               {filteredInternalResults.length === 0 && (
                 <div className="flex items-start gap-3 text-xs sm:text-sm text-slate-700">
-                  <Globe className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="p-2 rounded-xl bg-purple-100 text-purple-700 shrink-0 mt-0.5">
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                  </div>
                   <div>
                     <div className="font-bold text-slate-900 text-sm sm:text-base">
-                      Không tìm thấy "{query}" trong kho trường?
+                      Chưa có "{query}" trong kho nội bộ trường?
                     </div>
-                    <p className="text-xs sm:text-[13px] text-slate-600 mt-1">
-                      Bạn có thể tìm kiếm mở rộng trên Internet để nhận gợi ý tên chuẩn, đơn vị tính & giá tham khảo.
+                    <p className="text-xs sm:text-[13px] text-slate-600 mt-0.5">
+                      Dùng <strong>AI Gemini</strong> để tự động chuẩn hóa quy cách mầm non, ước tính giá và lấy ảnh mẫu tức thì.
                     </p>
                   </div>
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={handleTriggerExternalSearch}
-                className={`w-full py-3 px-4 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  filteredInternalResults.length > 0
-                    ? "text-indigo-700 hover:text-indigo-900 bg-white hover:bg-indigo-100/60 border border-indigo-200 shadow-2xs"
-                    : "text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 shadow-sm"
-                }`}
-              >
-                <Sparkles className={`w-4 h-4 ${filteredInternalResults.length > 0 ? "text-indigo-600" : "text-amber-300"}`} />
-                <span>
-                  {filteredInternalResults.length > 0
-                    ? `Không đúng món bạn cần? Tìm gợi ý mở rộng cho "${query}"`
-                    : `Tìm gợi ý mở rộng trên Internet cho "${query}"`}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Nút 1: Tìm bằng AI Gemini */}
+                <button
+                  type="button"
+                  onClick={handleTriggerAISearch}
+                  disabled={loadingAI}
+                  className="w-full py-2.5 px-4 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {loadingAI ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-purple-200" />
+                      <span>AI đang phân tích...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                      <span>✨ Gợi ý bằng AI Gemini</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Nút 2: Tìm mở rộng trên Internet */}
+                <button
+                  type="button"
+                  onClick={handleTriggerExternalSearch}
+                  disabled={loadingExternal}
+                  className="w-full py-2.5 px-4 text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-xl shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {loadingExternal ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                      <span>Đang quét Internet...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Globe className="w-4 h-4 text-blue-600" />
+                      <span>🌐 Tìm Shopee / Nhà sách</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Trạng thái Loading AI Gemini */}
+          {loadingAI && (
+            <div className="p-6 text-center bg-purple-50/60 rounded-2xl border border-purple-100 space-y-2.5 animate-pulse">
+              <div className="w-8 h-8 mx-auto rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 animate-spin text-purple-600" />
+              </div>
+              <div className="text-sm sm:text-base font-bold text-slate-900">
+                AI Gemini đang phân tích & tìm quy cách mầm non...
+              </div>
+              <p className="text-xs sm:text-[13px] text-slate-500">
+                Đang đề xuất tên chuẩn hóa tiếng Việt, ước tính đơn giá và đối chiếu hình ảnh minh họa
+              </p>
+            </div>
+          )}
+
+          {/* Lỗi gọi AI */}
+          {aiError && (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs sm:text-sm text-rose-700 flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="font-bold">Không thể gọi AI: </span>
+                <span>{aiError}</span>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* 3. KẾT QUẢ TỪ AI GEMINI (Hiển thị ngay khi có kết quả) */}
+          {/* ========================================================= */}
+          {aiResults.length > 0 && (
+            <div className="p-4 sm:p-5 bg-gradient-to-br from-purple-50/80 via-indigo-50/40 to-white border border-purple-200/90 rounded-2xl space-y-3.5 animate-in fade-in">
+              <div className="flex items-center justify-between pb-2 border-b border-purple-100">
+                <div className="text-xs sm:text-sm font-bold text-purple-950 flex items-center gap-2">
+                  <Sparkles className="w-4.5 h-4.5 text-purple-600" />
+                  <span>Gợi ý chuẩn xác từ AI Gemini Pro ({aiResults.length} món):</span>
+                </div>
+                <span className="text-[11px] font-bold bg-purple-100 text-purple-800 px-2.5 py-0.5 rounded-full border border-purple-200">
+                  ✨ Trí tuệ nhân tạo
                 </span>
-              </button>
+              </div>
+
+              <div className="space-y-3">
+                {aiResults.map((item, idx) => {
+                  const priceLabel = item.price
+                    ? `${item.price.toLocaleString("vi-VN")} đ`
+                    : "Đang cập nhật";
+
+                  return (
+                    <div
+                      key={idx}
+                      className="p-3.5 sm:p-4 bg-white rounded-2xl border border-purple-100 hover:border-purple-300 hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center gap-3.5 sm:gap-4 shadow-2xs"
+                    >
+                      {/* Ảnh Thumbnail */}
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center shadow-xs">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <PackagePlus className="w-7 h-7 text-purple-400" />
+                        )}
+                      </div>
+
+                      {/* Thông tin sản phẩm do AI gợi ý */}
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="font-bold text-slate-900 text-sm sm:text-base leading-snug">
+                            {item.name}
+                          </div>
+                          {item.categoryName && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                              {item.categoryName}
+                            </span>
+                          )}
+                        </div>
+
+                        {item.description && (
+                          <p className="text-xs text-slate-500 italic line-clamp-1">
+                            {item.description}
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <span className="font-bold bg-slate-100 text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200">
+                            ĐVT: {item.unit}
+                          </span>
+                          <span className="text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg font-bold">
+                            💰 Giá tham khảo: {priceLabel}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Nút Chọn đề xuất món do AI tìm */}
+                      <div className="shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex justify-end">
+                        {onSelectExternalProposal ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onSelectExternalProposal({
+                                name: item.name,
+                                unit: item.unit,
+                                price: item.price,
+                                imageUrl: item.imageUrl,
+                                sourceUrl: "https://gemini.google.com",
+                              });
+                              if (autoClearOnSelect) setQuery("");
+                              setIsOpen(false);
+                            }}
+                            className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 rounded-xl shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Chọn món này</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onSelectInternalItem({
+                                id: "",
+                                name: item.name,
+                                unit: item.unit,
+                                availableQuantity: 0,
+                                quantity: 0,
+                                price: item.price,
+                                imageUrl: item.imageUrl,
+                              });
+                              if (autoClearOnSelect) setQuery("");
+                              setIsOpen(false);
+                            }}
+                            className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-bold text-white bg-purple-600 hover:bg-purple-500 rounded-xl shadow-sm cursor-pointer"
+                          >
+                            + Điền vào form
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 

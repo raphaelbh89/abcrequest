@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { ItemSearchSelector } from "@/components/common/ItemSearchSelector";
 import { ThemeCombobox } from "@/components/requests/ThemeCombobox";
+import { DatePicker } from "@/components/common/DatePicker";
 import {
   fileOrBlobToCompressedDataUrl,
   handleClipboardImagePaste,
@@ -349,16 +350,12 @@ export function RequestForm() {
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                 Ngày cần sử dụng <span className="text-rose-600">*</span>
               </label>
-              <div className="relative">
-                <Calendar className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="date"
-                  value={neededDate}
-                  onChange={(e) => setNeededDate(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-medium"
-                  required
-                />
-              </div>
+              <DatePicker
+                value={neededDate}
+                onChange={(val) => setNeededDate(val)}
+                placeholder="Chọn ngày cần dùng..."
+                required
+              />
             </div>
           </div>
 

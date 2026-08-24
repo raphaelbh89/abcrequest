@@ -7,6 +7,7 @@ import { useSettings, AVAILABLE_LOGO_ICONS, CategoryItem } from "@/components/se
 import { useToast } from "@/components/common/Toast";
 import { ConfirmModal } from "@/components/common/ConfirmModal";
 import { UserTable } from "@/components/users/UserTable";
+import { AISettingsSection } from "@/components/settings/AISettingsSection";
 import {
   Settings,
   Building2,
@@ -27,6 +28,7 @@ import {
   Image,
   AlertTriangle,
   Loader2,
+  Bot,
 } from "lucide-react";
 
 interface UserProfile {
@@ -52,7 +54,7 @@ export default function AdminSettingsPage() {
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [activeTab, setActiveTab] = useState<"general" | "users" | "categories" | "warehouse">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "users" | "categories" | "warehouse" | "ai">("general");
 
   // Form state: General Settings
   const [schoolName, setSchoolName] = useState(settings.school_name);
@@ -258,7 +260,7 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* Settings Tab Navigation */}
-        <div className="flex items-center gap-2 p-1.5 glass-panel rounded-2xl border border-slate-200/80 bg-white/80 max-w-3xl overflow-x-auto">
+        <div className="w-full flex items-center gap-2 p-1.5 glass-panel rounded-2xl border border-slate-200/80 bg-white/80 overflow-x-auto shadow-xs">
           <button
             onClick={() => setActiveTab("general")}
             className={`flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
@@ -305,6 +307,18 @@ export default function AdminSettingsPage() {
           >
             <Sliders className="w-4 h-4" />
             <span>Cấu hình kho</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("ai")}
+            className={`flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === "ai"
+                ? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
+                : "text-purple-700 hover:text-purple-900 hover:bg-purple-50"
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>AI Gemini</span>
           </button>
         </div>
 
@@ -686,6 +700,9 @@ export default function AdminSettingsPage() {
             </form>
           </div>
         )}
+
+        {/* TAB 5: CẤU HÌNH AI GEMINI */}
+        {activeTab === "ai" && <AISettingsSection />}
       </main>
 
       {/* Category Modal (Add / Edit) */}
