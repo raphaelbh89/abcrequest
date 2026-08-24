@@ -40,38 +40,46 @@ export const GET = requireRole(
   ["admin", "manager", "stocker", "teacher"],
   async (_req: NextRequest) => {
     try {
-      // 1. Tự động khởi tạo dữ liệu mẫu nếu chưa có
+      // 1. Tự động khởi tạo dữ liệu mẫu nếu chưa có (theo thứ tự mới nhất đến cũ nhất)
       const count = await prisma.eventTheme.count();
       if (count === 0) {
-        for (const dt of DEFAULT_THEMES) {
+        const baseTime = Date.now();
+        for (let i = 0; i < DEFAULT_THEMES.length; i++) {
+          const dt = DEFAULT_THEMES[i];
           await prisma.eventTheme.create({
-            data: dt,
+            data: {
+              ...dt,
+              createdAt: new Date(baseTime + (DEFAULT_THEMES.length - i) * 1000),
+            },
           });
         }
       }
 
-      // 2. Lấy danh sách chủ đề chính thức
+      // 2. Lấy danh sách chủ đề chính thức (Sắp xếp mới nhất đến cũ nhất)
       const themes = await prisma.eventTheme.findMany({
         include: {
           _count: {
             select: { requests: true },
           },
         },
-        orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ isActive: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       });
 
-      // 3. Quét thêm các chủ đề đã từng được tạo tự do trong bảng Request (để gợi ý thông minh)
+      // 3. Quét thêm các chủ đề đã từng được tạo trong phiếu yêu cầu (sắp xếp phiếu mới nhất trước)
       const existingRequests = await prisma.request.findMany({
-        select: { purpose: true },
-        distinct: ["purpose"],
+        select: { purpose: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
       });
 
       const officialNames = new Set(themes.map((t) => t.name.toLowerCase().trim()));
       const customSuggestedThemes: string[] = [];
+      const seenCustom = new Set<string>();
 
       for (const r of existingRequests) {
-        if (r.purpose && !officialNames.has(r.purpose.toLowerCase().trim())) {
-          customSuggestedThemes.push(r.purpose.trim());
+        const trimmed = (r.purpose || "").trim();
+        if (trimmed && !officialNames.has(trimmed.toLowerCase()) && !seenCustom.has(trimmed.toLowerCase())) {
+          seenCustom.add(trimmed.toLowerCase());
+          customSuggestedThemes.push(trimmed);
         }
       }
 
