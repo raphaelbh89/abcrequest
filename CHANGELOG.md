@@ -28,8 +28,15 @@
   - Hiển thị thẻ xem trước Logo kèm thông tin file, nút thay ảnh và nút gỡ bỏ logo tiện lợi.
   - Tự động chèn Logo hình ảnh thực tế của trường vào phần đầu (Header ô `A1:B3`) của file Excel **YÊU CẦU MUA SẮM** (`/api/purchase-proposals/export`) và biểu mẫu **PHIẾU YÊU CẦU ĐỒ DÙNG** (`/api/requests/[id]/export`).
 
+- **Thiết Kế Lại Toàn Diện Giao Diện File Excel Xuất Ra (Redesigned Excel Templates)**
+  - **Màu sắc & Phông chữ chuyên nghiệp**: Tiêu đề xanh ngọc bích / Dark Teal (`#0F766E` / `#047857`), phông chữ Times New Roman chuẩn in ấn hành chính, viền nét mảnh (`#334155`) chống nhòe khi in.
+  - **Kẻ sọc xen kẽ (Zebra Striping)**: Các dòng chẵn được tô màu nền dịu nhẹ (`#F8FAFC`), làm nổi bật tên đồ dùng và số lượng cần mua thêm (`#DC2626` / `#FEF2F2`).
+  - **Dòng Tổng Cộng Độc Lập (Totals Row)**: Tự động cộng tổng số món, tổng SL xin, tổng tồn kho và tổng SL cần mua mới với viền đôi (Double Bottom Border) chuẩn kế toán.
+  - **Khối Ký Tên Chuẩn Hành Chính**: Thiết kế lại khối chữ ký đa cột (`Bộ phận yêu cầu`, `Quản lý`, `Mua hàng / Thủ kho`, `Ban Giám Hiệu`) với chiều cao thoải mái cho chữ ký tay và con dấu.
+  - **Căn chỉnh độ rộng cột thông minh**: Tối ưu độ rộng từng cột, tự động căn giữa ĐVT / Số lượng và căn trái mô tả, không bao giờ bị cắt chữ khi mở trên Microsoft Excel hoặc Google Sheets.
+
 - **Toàn Vẹn Dữ Liệu & Kiểm Thử Tự Động Toàn Diện (Testing Protocol 100% Pass)**
-  - Đạt **83/83 test cases trong 20 test suites PASS 100%** bao gồm toàn bộ luồng tải lên logo, AI, phân quyền, tồn kho, duyệt đơn, xuất Excel và stress test SQLite.
+  - Đạt **84/84 test cases trong 20 test suites PASS 100%** bao gồm toàn bộ luồng tải lên logo, định dạng Excel mới, AI, phân quyền, tồn kho, duyệt đơn và stress test SQLite.
 
 ---
 
