@@ -1,10 +1,11 @@
 import ExcelJS from "exceljs";
 import fs from "fs";
 import path from "path";
+import { prisma } from "./db";
 import { readSystemSettingsFromFile } from "./system-settings-file";
 
 /**
- * Tự động chèn Logo trường học vào file Excel xuất ra tại vùng chỉ định
+ * Tự động tìm và chèn Logo trường học vào bảng tính Excel xuất ra
  */
 export async function embedSchoolLogoInWorksheet(
   workbook: ExcelJS.Workbook,
@@ -12,14 +13,49 @@ export async function embedSchoolLogoInWorksheet(
   range: { tl: { col: number; row: number }; br: { col: number; row: number } }
 ): Promise<boolean> {
   try {
-    const settings = readSystemSettingsFromFile();
-    const logoUrl = settings.logo_url?.trim();
+    let logoUrl = "";
+
+    // 1. Ưu tiên đọc từ Database
+    try {
+      const dbSetting = await prisma.systemSetting.findUnique({
+        where: { key: "logo_url" },
+      });
+      if (dbSetting?.value && dbSetting.value.trim()) {
+        logoUrl = dbSetting.value.trim();
+      }
+    } catch {
+      // ignore db error
+    }
+
+    // 2. Fallback đọc từ file system-settings.json
+    if (!logoUrl) {
+      const fileSettings = readSystemSettingsFromFile();
+      if (fileSettings?.logo_url && fileSettings.logo_url.trim()) {
+        logoUrl = fileSettings.logo_url.trim();
+      }
+    }
+
+    // 3. Fallback: Nếu vẫn chưa có URL nhưng trong public/uploads có file logo
+    const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
+    if (!logoUrl && fs.existsSync(uploadsDir)) {
+      const files = fs.readdirSync(uploadsDir).filter((f) => !f.startsWith("."));
+      if (files.length > 0) {
+        // Lấy file mới nhất
+        const latestFile = files.sort((a, b) => {
+          const statA = fs.statSync(path.join(uploadsDir, a));
+          const statB = fs.statSync(path.join(uploadsDir, b));
+          return statB.mtimeMs - statA.mtimeMs;
+        })[0];
+        logoUrl = `/uploads/${latestFile}`;
+      }
+    }
+
     if (!logoUrl) return false;
 
     let buffer: Buffer | null = null;
     let extension: "png" | "jpeg" | "gif" = "png";
 
-    // 1. Nếu là data URI base64
+    // 4. Xử lý theo từng loại dữ liệu ảnh
     if (logoUrl.startsWith("data:")) {
       const match = logoUrl.match(/^data:image\/([a-zA-Z0-9+.-]+);base64,(.+)$/);
       if (match) {
@@ -29,9 +65,7 @@ export async function embedSchoolLogoInWorksheet(
         else extension = "png";
         buffer = Buffer.from(match[2], "base64");
       }
-    }
-    // 2. Nếu là đường dẫn file cục bộ trong thư mục public/uploads
-    else if (logoUrl.startsWith("/uploads/") || logoUrl.startsWith("uploads/")) {
+    } else if (logoUrl.startsWith("/uploads/") || logoUrl.startsWith("uploads/")) {
       const cleanPath = logoUrl.startsWith("/") ? logoUrl.slice(1) : logoUrl;
       const fullPath = path.resolve(process.cwd(), "public", cleanPath);
       if (fs.existsSync(fullPath)) {
@@ -41,9 +75,7 @@ export async function embedSchoolLogoInWorksheet(
         else if (ext === ".gif") extension = "gif";
         else extension = "png";
       }
-    }
-    // 3. Nếu là link URL ngoài internet
-    else if (logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) {
+    } else if (logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) {
       try {
         const res = await fetch(logoUrl, { signal: AbortSignal.timeout(4000) });
         if (res.ok) {
