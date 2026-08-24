@@ -78,23 +78,38 @@ async function main() {
     },
   });
 
-  // Seed default system settings
-  const defaultSettings = [
-    { key: "school_name", value: "Trường Mầm Non Họa Mi" },
-    { key: "app_title", value: "Kho Mầm Non" },
-    { key: "subtitle", value: "Quản lý đồ dùng & giáo cụ" },
-    { key: "logo_icon", value: "Boxes" },
-    { key: "logo_url", value: "" },
-    { key: "phone", value: "024 3852 1199" },
-    { key: "address", value: "Số 128 Đường Hoa Hồng, Quận Cầu Giấy, Hà Nội" },
-    { key: "default_min_stock", value: "5" },
-  ];
+  // Seed system settings (from data/system-settings.json if available)
+  let systemSettingsData: Record<string, string> = {
+    school_name: "Trường Mầm Non Họa Mi",
+    app_title: "Kho Mầm Non",
+    subtitle: "Quản lý đồ dùng & giáo cụ",
+    logo_icon: "Boxes",
+    logo_url: "",
+    phone: "024 3852 1199",
+    address: "Số 128 Đường Hoa Hồng, Quận Cầu Giấy, Hà Nội",
+    default_min_stock: "5",
+  };
 
-  for (const s of defaultSettings) {
+  try {
+    const fs = await import("fs");
+    const path = await import("path");
+    const settingsPath = path.resolve(process.cwd(), "data", "system-settings.json");
+    if (fs.existsSync(settingsPath)) {
+      const fileRaw = fs.readFileSync(settingsPath, "utf-8");
+      const parsed = JSON.parse(fileRaw);
+      if (parsed && typeof parsed === "object") {
+        systemSettingsData = { ...systemSettingsData, ...parsed };
+      }
+    }
+  } catch (e) {
+    // fallback
+  }
+
+  for (const [key, value] of Object.entries(systemSettingsData)) {
     await prisma.systemSetting.upsert({
-      where: { key: s.key },
-      update: {},
-      create: s,
+      where: { key },
+      update: { value },
+      create: { key, value },
     });
   }
 

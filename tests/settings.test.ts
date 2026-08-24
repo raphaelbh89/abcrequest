@@ -81,4 +81,31 @@ describe("Integration Tests: System Settings & Category Management", () => {
 
     assert.strictEqual(checkDeleted, null, "Danh mục đã được xóa");
   });
+
+  test("3. Kiểm tra tính năng đồng bộ và phục hồi cài đặt qua data/system-settings.json", async () => {
+    const { readSystemSettingsFromFile, writeSystemSettingsToFile } = await import("../lib/system-settings-file");
+
+    const customSettings = {
+      school_name: "Trường Mầm Non Hoa Sen Test",
+      app_title: "Kho Hoa Sen",
+      subtitle: "Hệ thống quản lý giáo cụ",
+      logo_icon: "Heart",
+      logo_url: "",
+      phone: "0987 654 321",
+      address: "Số 99 Đường Giải Phóng, Hà Nội",
+      default_min_stock: "10",
+    };
+
+    // 1. Ghi ra file
+    writeSystemSettingsToFile(customSettings);
+
+    // 2. Đọc lại từ file
+    const loaded = readSystemSettingsFromFile();
+    assert.strictEqual(loaded.school_name, "Trường Mầm Non Hoa Sen Test");
+    assert.strictEqual(loaded.app_title, "Kho Hoa Sen");
+    assert.strictEqual(loaded.logo_icon, "Heart");
+    assert.strictEqual(loaded.phone, "0987 654 321");
+    assert.strictEqual(loaded.address, "Số 99 Đường Giải Phóng, Hà Nội");
+    assert.strictEqual(loaded.default_min_stock, "10");
+  });
 });
