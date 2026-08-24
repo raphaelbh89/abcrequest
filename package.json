@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npx tsx --test tests/allocation.test.ts tests/flow.test.ts tests/ai-suggestions.test.ts tests/export.test.ts tests/stock-in-price.test.ts tests/reject-item.test.ts tests/notifications-password.test.ts tests/available-stock.test.ts tests/settings.test.ts tests/roles-permissions.test.ts tests/load-stress.test.ts tests/internal-search.test.ts tests/external-search.test.ts tests/external-proposals-flow.test.ts tests/search-accuracy-40.test.ts tests/excel-import.test.ts tests/disbursement-reuse.test.ts tests/event-themes.test.ts tests/ai-search.test.ts"
+    "test": "npx tsx --test tests/allocation.test.ts tests/flow.test.ts tests/ai-suggestions.test.ts tests/export.test.ts tests/stock-in-price.test.ts tests/reject-item.test.ts tests/notifications-password.test.ts tests/available-stock.test.ts tests/settings.test.ts tests/roles-permissions.test.ts tests/load-stress.test.ts tests/internal-search.test.ts tests/external-search.test.ts tests/external-proposals-flow.test.ts tests/search-accuracy-40.test.ts tests/excel-import.test.ts tests/disbursement-reuse.test.ts tests/event-themes.test.ts tests/ai-search.test.ts tests/upload-logo.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

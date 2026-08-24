@@ -29,6 +29,8 @@ import {
   AlertTriangle,
   Loader2,
   Bot,
+  Upload,
+  CheckCircle2,
 } from "lucide-react";
 
 interface UserProfile {
@@ -66,6 +68,9 @@ export default function AdminSettingsPage() {
   const [address, setAddress] = useState(settings.address);
   const [defaultMinStock, setDefaultMinStock] = useState(settings.default_min_stock);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Category state
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -144,6 +149,44 @@ export default function AdminSettingsPage() {
     } finally {
       setSavingSettings(false);
     }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      error("Dung lượng file ảnh vượt quá 5MB. Vui lòng chọn ảnh nhẹ hơn.");
+      return;
+    }
+
+    setUploadingLogo(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/upload/logo", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.logoUrl) {
+        setLogoUrl(data.logoUrl);
+        await refreshSettings();
+        success("Đã tải lên và cập nhật logo trường thành công!");
+      } else {
+        error(data.error || "Không thể tải lên logo.");
+      }
+    } catch {
+      error("Lỗi kết nối khi tải file ảnh.");
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoUrl("");
   };
 
   const handleOpenAddCategory = () => {
@@ -418,24 +461,118 @@ export default function AdminSettingsPage() {
                   </div>
                 </div>
 
-                {/* Custom Logo URL Option */}
-                <div className="pt-2 border-t border-slate-100 space-y-2">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Hoặc Nhập Đường Dẫn Ảnh Logo Riêng (Tùy chọn)
-                  </label>
-                  <div className="relative">
-                    <Image className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type="url"
-                      value={logoUrl}
-                      onChange={(e) => setLogoUrl(e.target.value)}
-                      placeholder="https://domain.com/logo.png (Để trống nếu dùng icon ở trên)"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-medium"
-                    />
+                {/* Logo Upload & Custom Logo Section */}
+                <div className="pt-4 border-t border-slate-100 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Ảnh Logo Trường Học (Tải Lên / Upload)
+                    </label>
+                    <span className="text-[11px] text-slate-400">Hiển thị trên Web App và Biểu mẫu xuất Excel</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
-                    * Nếu có URL ảnh logo, hệ thống sẽ ưu tiên hiển thị ảnh này thay cho icon.
-                  </p>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+
+                  {logoUrl ? (
+                    <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-16 h-16 rounded-2xl border border-slate-200 bg-white p-1.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                          <img
+                            src={logoUrl}
+                            alt="Logo trường"
+                            className="max-w-full max-h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span>Đã tải lên logo thành công</span>
+                          </div>
+                          <p className="text-[11px] font-mono text-slate-500 truncate max-w-xs sm:max-w-md">
+                            {logoUrl}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingLogo}
+                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                        >
+                          <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Thay ảnh khác</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogo}
+                          className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Gỡ logo</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="group border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-6 sm:p-8 text-center cursor-pointer transition-all bg-slate-50/60 hover:bg-emerald-50/30 flex flex-col items-center justify-center gap-2"
+                    >
+                      {uploadingLogo ? (
+                        <div className="space-y-2">
+                          <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mx-auto" />
+                          <p className="text-xs font-bold text-slate-700">Đang tải lên logo trường...</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 group-hover:text-emerald-600 group-hover:scale-105 transition-all">
+                            <Upload className="w-6 h-6" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-emerald-800">
+                              Bấm vào đây để chọn ảnh Logo tải lên từ máy tính
+                            </p>
+                            <p className="text-[11px] text-slate-500">
+                              Hỗ trợ định dạng PNG, JPG, JPEG, WEBP, SVG (Dung lượng tối đa 5MB)
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Collapsible Direct URL Link option */}
+                  <div className="space-y-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowUrlInput(!showUrlInput)}
+                      className="text-[11px] font-bold text-slate-500 hover:text-emerald-600 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <span>{showUrlInput ? "▾ Thu gọn nhập URL thủ công" : "▸ Hoặc nhập đường dẫn (URL) ảnh logo từ internet"}</span>
+                    </button>
+
+                    {showUrlInput && (
+                      <div className="relative animate-in fade-in duration-200">
+                        <Image className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <input
+                          type="url"
+                          value={logoUrl}
+                          onChange={(e) => setLogoUrl(e.target.value)}
+                          placeholder="https://domain.com/logo.png"
+                          className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-medium"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Contact Info */}

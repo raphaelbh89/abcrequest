@@ -23,8 +23,13 @@
   - Mở rộng thanh điều hướng phụ trang Cài đặt lên toàn chiều ngang (`w-full`) chống hiện tượng co ngắn giao diện.
   - Dọn dẹp toàn bộ import thừa, biến không sử dụng và đảm bảo 100% mã nguồn dùng biến màu sắc & khoảng cách chuẩn từ hệ thống Tailwind CSS.
 
+- **Tải Lên Logo Trường Học Trực Tiếp & Tích Hợp Xuất File Excel (Logo Upload & Excel Branding)**
+  - Thay thế ô nhập URL thủ công bằng khu vực Tải lên Logo (Upload Dropzone) hiện đại, hỗ trợ kéo thả hoặc chọn file ảnh trực tiếp từ máy tính (`PNG`, `JPG`, `WEBP`, `SVG`).
+  - Hiển thị thẻ xem trước Logo kèm thông tin file, nút thay ảnh và nút gỡ bỏ logo tiện lợi.
+  - Tự động chèn Logo hình ảnh thực tế của trường vào phần đầu (Header ô `A1:B3`) của file Excel **YÊU CẦU MUA SẮM** (`/api/purchase-proposals/export`) và biểu mẫu **PHIẾU YÊU CẦU ĐỒ DÙNG** (`/api/requests/[id]/export`).
+
 - **Toàn Vẹn Dữ Liệu & Kiểm Thử Tự Động Toàn Diện (Testing Protocol 100% Pass)**
-  - Đạt **78/78 test cases trong 19 test suites PASS 100%** bao gồm toàn bộ luồng AI, phân quyền, tồn kho, duyệt đơn, xuất Excel và stress test SQLite.
+  - Đạt **83/83 test cases trong 20 test suites PASS 100%** bao gồm toàn bộ luồng tải lên logo, AI, phân quyền, tồn kho, duyệt đơn, xuất Excel và stress test SQLite.
 
 ---
 

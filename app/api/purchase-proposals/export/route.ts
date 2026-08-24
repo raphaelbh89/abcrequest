@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/auth-guards";
+import { readSystemSettingsFromFile } from "@/lib/system-settings-file";
+import { embedSchoolLogoInWorksheet } from "@/lib/excel-logo";
 import ExcelJS from "exceljs";
 
 // GET /api/purchase-proposals/export - Admin, Manager, Stocker
@@ -104,9 +106,21 @@ export const GET = requireRole(["admin", "manager", "stocker"], async (req: Next
     // Logo / School Info Block (A1:B3)
     worksheet.mergeCells("A1:B3");
     const logoCell = worksheet.getCell("A1");
-    logoCell.value = "TRƯỜNG MẦM NON\nKHO ĐỒ DÙNG";
-    logoCell.font = { name: "Times New Roman", size: 11, bold: true, color: { argb: "FF9A3412" } };
-    logoCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+
+    const currentSettings = readSystemSettingsFromFile();
+    const schoolNameUpper = (currentSettings.school_name || "TRƯỜNG MẦM NON").toUpperCase();
+
+    // Thử chèn logo hình ảnh thực tế nếu trường đã tải logo
+    const hasLogo = await embedSchoolLogoInWorksheet(workbook, worksheet, {
+      tl: { col: 0.15, row: 0.15 },
+      br: { col: 1.85, row: 2.85 },
+    });
+
+    if (!hasLogo) {
+      logoCell.value = `${schoolNameUpper}\nKHO ĐỒ DÙNG`;
+      logoCell.font = { name: "Times New Roman", size: 11, bold: true, color: { argb: "FF9A3412" } };
+      logoCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    }
 
     // Title Block (C1:F3)
     worksheet.mergeCells("C1:F3");

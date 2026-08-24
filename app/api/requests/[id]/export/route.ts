@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-guards";
+import { readSystemSettingsFromFile } from "@/lib/system-settings-file";
+import { embedSchoolLogoInWorksheet } from "@/lib/excel-logo";
 import ExcelJS from "exceljs";
 
 // GET /api/requests/[id]/export - Export single request to Excel (.xlsx)
@@ -28,6 +30,9 @@ export const GET = requireAuth(async (_req: NextRequest, _user, context?: any) =
       return NextResponse.json({ error: "Yêu cầu không tồn tại" }, { status: 404 });
     }
 
+    const currentSettings = readSystemSettingsFromFile();
+    const schoolNameUpper = (currentSettings.school_name || "TRƯỜNG MẦM NON").toUpperCase();
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "Kho Mầm Non";
     workbook.created = new Date();
@@ -36,10 +41,10 @@ export const GET = requireAuth(async (_req: NextRequest, _user, context?: any) =
       views: [{ showGridLines: true }],
     });
 
-    // 1. Title Block
+    // 1. Title Block & School Header
     worksheet.mergeCells("A1:H1");
     const titleCell = worksheet.getCell("A1");
-    titleCell.value = "PHIẾU YÊU CẦU ĐỒ DÙNG HỌC TẬP & NGOẠI KHÓA";
+    titleCell.value = `${schoolNameUpper} - PHIẾU YÊU CẦU ĐỒ DÙNG`;
     titleCell.font = { name: "Times New Roman", size: 16, bold: true, color: { argb: "FF047857" } };
     titleCell.alignment = { horizontal: "center", vertical: "middle" };
     worksheet.getRow(1).height = 35;
