@@ -20,9 +20,11 @@ import {
   ShoppingCart,
   AlertCircle,
   ArrowUpRight,
+  Plus,
 } from "lucide-react";
 import { DisbursementModal } from "@/components/disbursements/DisbursementModal";
 import { DisbursementVoucherModal } from "@/components/disbursements/DisbursementVoucherModal";
+import { DirectDisbursementModal } from "@/components/disbursements/DirectDisbursementModal";
 
 interface UserInfo {
   id: string;
@@ -46,6 +48,7 @@ export default function DisbursementsPage() {
   // Modals
   const [selectedRequestForDisburse, setSelectedRequestForDisburse] = useState<any | null>(null);
   const [selectedDisbursementForView, setSelectedDisbursementForView] = useState<any | null>(null);
+  const [isDirectModalOpen, setIsDirectModalOpen] = useState<boolean>(false);
 
   // 1. Auth check
   useEffect(() => {
@@ -162,6 +165,17 @@ export default function DisbursementsPage() {
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-emerald-600" : ""}`} />
               <span>Làm mới</span>
             </button>
+
+            {isStockerOrManager && (
+              <button
+                type="button"
+                onClick={() => setIsDirectModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tạo phiếu cấp phát</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -517,6 +531,21 @@ export default function DisbursementsPage() {
             isOpen={Boolean(selectedDisbursementForView)}
             onClose={() => setSelectedDisbursementForView(null)}
             disbursement={selectedDisbursementForView}
+          />
+        )}
+
+        {/* Direct Disbursement Creation Modal */}
+        {isDirectModalOpen && (
+          <DirectDisbursementModal
+            isOpen={isDirectModalOpen}
+            onClose={() => setIsDirectModalOpen(false)}
+            onSuccess={(createdDisbursement) => {
+              fetchData();
+              setActiveTab("history");
+              if (createdDisbursement) {
+                setSelectedDisbursementForView(createdDisbursement);
+              }
+            }}
           />
         )}
       </main>
