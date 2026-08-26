@@ -35,6 +35,10 @@
   - **Khối Ký Tên Chuẩn Hành Chính**: Thiết kế lại khối chữ ký đa cột (`Bộ phận yêu cầu`, `Quản lý`, `Mua hàng / Thủ kho`, `Ban Giám Hiệu`) với chiều cao thoải mái cho chữ ký tay và con dấu.
   - **Căn chỉnh độ rộng cột thông minh**: Tối ưu độ rộng từng cột, tự động căn giữa ĐVT / Số lượng và căn trái mô tả, không bao giờ bị cắt chữ khi mở trên Microsoft Excel hoặc Google Sheets.
 
+- **Cột Giá Tham Khảo & Bảng Tính Tổng Tạm Thời Khi Tạo Phiếu Yêu Cầu (`/requests/new`)**
+  - Thêm 2 cột **`Đơn giá (VNĐ)`** (cho phép xem và chỉnh sửa linh hoạt) và **`Thành tiền`** (tự động tính $SL \times Đơn\ giá$) vào bảng đồ dùng được chọn.
+  - Tích hợp **Thanh Tổng Hợp Tạm Tính (Temporary Summary Bar)** ngay dưới bảng: tự động thống kê *Tổng số mặt hàng*, *Tổng số lượng xin*, *Số lượng lấy từ kho*, *Số lượng cần mua thêm*, và **Tổng kinh phí tạm tính (VNĐ)** nổi bật với phông chữ lớn và biểu tượng máy tính.
+
 - **Toàn Vẹn Dữ Liệu & Kiểm Thử Tự Động Toàn Diện (Testing Protocol 100% Pass)**
   - Đạt **84/84 test cases trong 20 test suites PASS 100%** bao gồm toàn bộ luồng tải lên logo, định dạng Excel mới, AI, phân quyền, tồn kho, duyệt đơn và stress test SQLite.
 

@@ -23,6 +23,8 @@ import {
   Image as ImageIcon,
   Edit3,
   X,
+  Coins,
+  Calculator,
 } from "lucide-react";
 import { ItemSearchSelector } from "@/components/common/ItemSearchSelector";
 import { ThemeCombobox } from "@/components/requests/ThemeCombobox";
@@ -40,6 +42,7 @@ interface ItemAvailability {
   quantity: number;
   pendingAllocatedQty: number;
   availableQuantity: number;
+  price?: number | null;
   imageUrl?: string | null;
 }
 
@@ -50,6 +53,7 @@ interface SelectedItem {
   unit: string;
   availableQuantity: number;
   requestedQty: number;
+  price?: number | null;
   imageUrl?: string | null;
   isNewItemProposal?: boolean;
   proposedPrice?: number | null;
@@ -135,6 +139,7 @@ export function RequestForm() {
     name: string;
     unit: string;
     availableQuantity: number;
+    price?: number | null;
     imageUrl?: string | null;
   }) => {
     if (selectedItems.some((si) => si.itemId === item.id)) {
@@ -149,6 +154,7 @@ export function RequestForm() {
         unit: item.unit,
         availableQuantity: item.availableQuantity,
         requestedQty: 1,
+        price: item.price ?? 0,
         imageUrl: item.imageUrl,
         isNewItemProposal: false,
       },
@@ -173,9 +179,10 @@ export function RequestForm() {
         unit: proposal.unit,
         availableQuantity: 0,
         requestedQty: 1,
+        price: proposal.price ?? 0,
         imageUrl: proposal.imageUrl,
         isNewItemProposal: true,
-        proposedPrice: proposal.price,
+        proposedPrice: proposal.price ?? 0,
         proposedImageUrl: proposal.imageUrl,
         proposedSourceUrl: proposal.sourceUrl,
       },
@@ -195,6 +202,21 @@ export function RequestForm() {
     setSelectedItems((prev) =>
       prev.map((si) =>
         si.id === id ? { ...si, requestedQty: Math.max(1, qty) } : si
+      )
+    );
+  };
+
+  // Sửa đơn giá tham khảo
+  const handlePriceChange = (id: string, price: number) => {
+    setSelectedItems((prev) =>
+      prev.map((si) =>
+        si.id === id
+          ? {
+              ...si,
+              price: Math.max(0, price),
+              proposedPrice: Math.max(0, price),
+            }
+          : si
       )
     );
   };
@@ -302,6 +324,35 @@ export function RequestForm() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Tính toán tổng số lượng và kinh phí tạm thời
+  const totalItemCount = selectedItems.length;
+  const totalRequestedQty = selectedItems.reduce(
+    (acc, si) => acc + (si.requestedQty || 0),
+    0
+  );
+  const totalAllocatedQty = selectedItems.reduce((acc, si) => {
+    const isNew = Boolean(si.isNewItemProposal);
+    return (
+      acc +
+      (isNew ? 0 : Math.min(si.requestedQty, Math.max(0, si.availableQuantity)))
+    );
+  }, 0);
+  const totalShortfallQty = selectedItems.reduce((acc, si) => {
+    const isNew = Boolean(si.isNewItemProposal);
+    const alloc = isNew
+      ? 0
+      : Math.min(si.requestedQty, Math.max(0, si.availableQuantity));
+    return acc + Math.max(0, (si.requestedQty || 0) - alloc);
+  }, 0);
+  const totalEstimatedCost = selectedItems.reduce((acc, si) => {
+    const unitPrice = si.price ?? si.proposedPrice ?? 0;
+    return acc + (si.requestedQty || 0) * unitPrice;
+  }, 0);
+
+  const formatMoney = (amount: number) => {
+    return (amount || 0).toLocaleString("vi-VN") + " đ";
   };
 
   return (
@@ -455,230 +506,303 @@ export function RequestForm() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-2xs">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3.5 min-w-[280px]">Tên đồ dùng & Hình ảnh</th>
-                    <th className="px-3 py-3.5 text-center w-28 whitespace-nowrap">Tồn khả dụng</th>
-                    <th className="px-3 py-3.5 text-center w-28 whitespace-nowrap">Số lượng xin</th>
-                    <th className="px-3 py-3.5 text-center w-24 whitespace-nowrap">Đơn vị tính</th>
-                    <th className="px-4 py-3.5 min-w-[220px]">Dự kiến Phân bổ & Mua sắm</th>
-                    <th className="px-3 py-3.5 text-center w-14">Xóa</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {selectedItems.map((si) => {
-                    const isNewProposal = Boolean(si.isNewItemProposal);
-                    const allocatedPreview = isNewProposal
-                      ? 0
-                      : Math.min(si.requestedQty, Math.max(0, si.availableQuantity));
-                    const shortfallPreview = isNewProposal
-                      ? si.requestedQty
-                      : si.requestedQty - allocatedPreview;
+            <div className="space-y-4">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-2xs">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3.5 min-w-[250px]">Tên đồ dùng & Hình ảnh</th>
+                      <th className="px-3 py-3.5 text-center w-24 whitespace-nowrap">Tồn khả dụng</th>
+                      <th className="px-3 py-3.5 text-center w-24 whitespace-nowrap">Số lượng xin</th>
+                      <th className="px-3 py-3.5 text-center w-20 whitespace-nowrap">ĐVT</th>
+                      <th className="px-3 py-3.5 text-right w-32 whitespace-nowrap">Đơn giá (VNĐ)</th>
+                      <th className="px-3 py-3.5 text-right w-32 whitespace-nowrap">Thành tiền</th>
+                      <th className="px-4 py-3.5 min-w-[190px]">Dự kiến phân bổ</th>
+                      <th className="px-3 py-3.5 text-center w-12">Xóa</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {selectedItems.map((si) => {
+                      const isNewProposal = Boolean(si.isNewItemProposal);
+                      const allocatedPreview = isNewProposal
+                        ? 0
+                        : Math.min(si.requestedQty, Math.max(0, si.availableQuantity));
+                      const shortfallPreview = isNewProposal
+                        ? si.requestedQty
+                        : si.requestedQty - allocatedPreview;
+                      const unitPrice = si.price ?? si.proposedPrice ?? 0;
+                      const lineTotal = (si.requestedQty || 0) * unitPrice;
 
-                    return (
-                      <tr
-                        key={si.id}
-                        onPaste={(e) => handleRowPaste(si.id, e)}
-                        className="hover:bg-slate-50/70 transition-colors"
-                      >
-                        {/* 1. Cột Tên đồ dùng & Ảnh (Có thể sửa tên & tải/dán ảnh) */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            {/* Khung Thumbnail - Click để chọn ảnh từ máy */}
-                            <label
-                              title="Bấm để tải ảnh từ máy tính hoặc nhấn Ctrl+V để dán ảnh"
-                              className="w-12 h-12 rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 relative group cursor-pointer shadow-2xs hover:border-emerald-500 transition-all"
-                            >
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleRowFileUpload(si.id, file);
-                                }}
-                              />
-
-                              {si.imageUrl || si.proposedImageUrl ? (
-                                <>
-                                  <img
-                                    src={si.imageUrl || si.proposedImageUrl || ""}
-                                    alt={si.name}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      (e.target as HTMLElement).style.display = "none";
-                                    }}
-                                  />
-                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[8px] font-bold transition-opacity">
-                                    <UploadCloud className="w-3.5 h-3.5 mb-0.5" />
-                                    <span>Đổi ảnh</span>
-                                  </div>
-                                </>
-                              ) : (
-                                <div className="flex flex-col items-center justify-center text-slate-400 group-hover:text-emerald-600">
-                                  <UploadCloud className="w-4 h-4" />
-                                  <span className="text-[8px] font-bold mt-0.5">Tải ảnh</span>
-                                </div>
-                              )}
-                            </label>
-
-                            {/* Tên đồ dùng (Có thể sửa trực tiếp) */}
-                            <div className="flex-1 min-w-0 space-y-1">
-                              <input
-                                type="text"
-                                value={si.name}
-                                onChange={(e) => handleNameChange(si.id, e.target.value)}
-                                placeholder="Nhập/sửa tên đồ dùng..."
-                                className="w-full px-2.5 py-1 text-sm font-bold text-slate-800 bg-slate-50/70 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-emerald-500 rounded-lg focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                              />
-
-                              <div className="flex items-center gap-2 flex-wrap text-[11px]">
-                                {isNewProposal && (
-                                  <span className="font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-md text-[10px]">
-                                    ⭐ Đề xuất mới
-                                  </span>
-                                )}
-
-                                {/* Nút nhập URL ảnh nếu muốn */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (editingImageRowId === si.id) {
-                                      setEditingImageRowId(null);
-                                    } else {
-                                      setEditingImageRowId(si.id);
-                                      setCustomImageUrlInput(si.imageUrl || si.proposedImageUrl || "");
-                                    }
+                      return (
+                        <tr
+                          key={si.id}
+                          onPaste={(e) => handleRowPaste(si.id, e)}
+                          className="hover:bg-slate-50/70 transition-colors"
+                        >
+                          {/* 1. Cột Tên đồ dùng & Ảnh (Có thể sửa tên & tải/dán ảnh) */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              {/* Khung Thumbnail - Click để chọn ảnh từ máy */}
+                              <label
+                                title="Bấm để tải ảnh từ máy tính hoặc nhấn Ctrl+V để dán ảnh"
+                                className="w-12 h-12 rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 relative group cursor-pointer shadow-2xs hover:border-emerald-500 transition-all"
+                              >
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleRowFileUpload(si.id, file);
                                   }}
-                                  className="text-slate-500 hover:text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer font-medium"
-                                >
-                                  <ImageIcon className="w-3 h-3" />
-                                  <span>{editingImageRowId === si.id ? "Đóng" : "Dán link ảnh"}</span>
-                                </button>
+                                />
 
-                                {isNewProposal && si.proposedSourceUrl && (
-                                  <a
-                                    href={si.proposedSourceUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-blue-600 hover:underline font-semibold"
-                                  >
-                                    <ExternalLink className="w-3 h-3" />
-                                    <span>Nguồn</span>
-                                  </a>
+                                {si.imageUrl || si.proposedImageUrl ? (
+                                  <>
+                                    <img
+                                      src={si.imageUrl || si.proposedImageUrl || ""}
+                                      alt={si.name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLElement).style.display = "none";
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[8px] font-bold transition-opacity">
+                                      <UploadCloud className="w-3.5 h-3.5 mb-0.5" />
+                                      <span>Đổi ảnh</span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center text-slate-400 group-hover:text-emerald-600">
+                                    <UploadCloud className="w-4 h-4" />
+                                    <span className="text-[8px] font-bold mt-0.5">Tải ảnh</span>
+                                  </div>
                                 )}
-                              </div>
+                              </label>
 
-                              {/* Input URL mở rộng khi bấm 'Dán link ảnh' */}
-                              {editingImageRowId === si.id && (
-                                <div className="flex items-center gap-1.5 pt-1 animate-in fade-in">
-                                  <input
-                                    type="url"
-                                    value={customImageUrlInput}
-                                    onChange={(e) => setCustomImageUrlInput(e.target.value)}
-                                    placeholder="Dán link ảnh (https://...)"
-                                    className="flex-1 px-2 py-1 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                  />
+                              {/* Tên đồ dùng (Có thể sửa trực tiếp) */}
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <input
+                                  type="text"
+                                  value={si.name}
+                                  onChange={(e) => handleNameChange(si.id, e.target.value)}
+                                  placeholder="Nhập/sửa tên đồ dùng..."
+                                  className="w-full px-2.5 py-1 text-sm font-bold text-slate-800 bg-slate-50/70 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-emerald-500 rounded-lg focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                                />
+
+                                <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                                  {isNewProposal && (
+                                    <span className="font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-md text-[10px]">
+                                      ⭐ Đề xuất mới
+                                    </span>
+                                  )}
+
+                                  {/* Nút nhập URL ảnh nếu muốn */}
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      handleImageChange(si.id, customImageUrlInput.trim());
-                                      setEditingImageRowId(null);
+                                      if (editingImageRowId === si.id) {
+                                        setEditingImageRowId(null);
+                                      } else {
+                                        setEditingImageRowId(si.id);
+                                        setCustomImageUrlInput(si.imageUrl || si.proposedImageUrl || "");
+                                      }
                                     }}
-                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-xs font-bold transition-colors cursor-pointer"
+                                    className="text-slate-500 hover:text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer font-medium"
                                   >
-                                    Lưu
+                                    <ImageIcon className="w-3 h-3" />
+                                    <span>{editingImageRowId === si.id ? "Đóng" : "Dán link ảnh"}</span>
                                   </button>
+
+                                  {isNewProposal && si.proposedSourceUrl && (
+                                    <a
+                                      href={si.proposedSourceUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-blue-600 hover:underline font-semibold"
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                      <span>Nguồn</span>
+                                    </a>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
 
-                        {/* 2. Cột Tồn khả dụng */}
-                        <td className="px-3 py-3 text-center whitespace-nowrap">
-                          {isNewProposal ? (
-                            <span className="text-xs font-semibold text-slate-400 italic">
-                              Chưa có trong kho
-                            </span>
-                          ) : (
-                            <span className="font-bold font-mono text-slate-800 text-sm">
-                              {si.availableQuantity} <span className="text-xs font-normal text-slate-500">{si.unit}</span>
-                            </span>
-                          )}
-                        </td>
-
-                        {/* 3. Cột Số lượng xin (Tách riêng) */}
-                        <td className="px-3 py-3 text-center whitespace-nowrap">
-                          <input
-                            type="number"
-                            min="1"
-                            value={si.requestedQty}
-                            onChange={(e) =>
-                              handleQuantityChange(
-                                si.id,
-                                parseInt(e.target.value || "1", 10)
-                              )
-                            }
-                            className="w-20 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-300 focus:border-emerald-500 rounded-xl text-center text-sm font-black font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                          />
-                        </td>
-
-                        {/* 4. Cột Đơn vị tính (Tách riêng, có thể sửa) */}
-                        <td className="px-3 py-3 text-center whitespace-nowrap">
-                          <input
-                            type="text"
-                            value={si.unit}
-                            onChange={(e) => handleUnitChange(si.id, e.target.value)}
-                            title="Nhấp để chỉnh sửa ĐVT nếu cần"
-                            placeholder="ĐVT"
-                            className="w-20 px-2 py-1.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-300 focus:border-emerald-500 rounded-xl text-center text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                          />
-                        </td>
-
-                        {/* 5. Cột Dự kiến Phân bổ & Mua sắm */}
-                        <td className="px-4 py-3">
-                          <div className="space-y-1 text-xs">
-                            {isNewProposal ? (
-                              <div className="inline-flex items-center gap-1.5 text-indigo-700 font-bold bg-indigo-50/80 px-2.5 py-1.5 rounded-xl border border-indigo-100">
-                                <PackageMinus className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                                <span>100% Cần mua mới: {shortfallPreview} {si.unit}</span>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="flex items-center gap-1.5 text-emerald-700 font-bold">
-                                  <PackageCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                  <span>Lấy từ kho: {allocatedPreview} {si.unit}</span>
-                                </div>
-                                {shortfallPreview > 0 && (
-                                  <div className="flex items-center gap-1.5 text-amber-700 font-bold">
-                                    <PackageMinus className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                    <span>Cần mua thêm: {shortfallPreview} {si.unit}</span>
+                                {/* Input URL mở rộng khi bấm 'Dán link ảnh' */}
+                                {editingImageRowId === si.id && (
+                                  <div className="flex items-center gap-1.5 pt-1 animate-in fade-in">
+                                    <input
+                                      type="url"
+                                      value={customImageUrlInput}
+                                      onChange={(e) => setCustomImageUrlInput(e.target.value)}
+                                      placeholder="Dán link ảnh (https://...)"
+                                      className="flex-1 px-2 py-1 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleImageChange(si.id, customImageUrlInput.trim());
+                                        setEditingImageRowId(null);
+                                      }}
+                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-xs font-bold transition-colors cursor-pointer"
+                                    >
+                                      Lưu
+                                    </button>
                                   </div>
                                 )}
-                              </>
-                            )}
-                          </div>
-                        </td>
+                              </div>
+                            </div>
+                          </td>
 
-                        {/* 6. Nút Xóa */}
-                        <td className="px-3 py-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(si.id)}
-                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
-                            title="Xóa món này"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          {/* 2. Cột Tồn khả dụng */}
+                          <td className="px-3 py-3 text-center whitespace-nowrap">
+                            {isNewProposal ? (
+                              <span className="text-xs font-semibold text-slate-400 italic">
+                                Chưa có trong kho
+                              </span>
+                            ) : (
+                              <span className="font-bold font-mono text-slate-800 text-sm">
+                                {si.availableQuantity} <span className="text-xs font-normal text-slate-500">{si.unit}</span>
+                              </span>
+                            )}
+                          </td>
+
+                          {/* 3. Cột Số lượng xin */}
+                          <td className="px-3 py-3 text-center whitespace-nowrap">
+                            <input
+                              type="number"
+                              min="1"
+                              value={si.requestedQty}
+                              onChange={(e) =>
+                                handleQuantityChange(
+                                  si.id,
+                                  parseInt(e.target.value || "1", 10)
+                                )
+                              }
+                              className="w-20 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-300 focus:border-emerald-500 rounded-xl text-center text-sm font-black font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                            />
+                          </td>
+
+                          {/* 4. Cột Đơn vị tính (Có thể sửa) */}
+                          <td className="px-3 py-3 text-center whitespace-nowrap">
+                            <input
+                              type="text"
+                              value={si.unit}
+                              onChange={(e) => handleUnitChange(si.id, e.target.value)}
+                              title="Nhấp để chỉnh sửa ĐVT nếu cần"
+                              placeholder="ĐVT"
+                              className="w-16 px-2 py-1.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-300 focus:border-emerald-500 rounded-xl text-center text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                            />
+                          </td>
+
+                          {/* 5. Cột Đơn giá (VNĐ) */}
+                          <td className="px-3 py-3 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                step="1000"
+                                value={unitPrice || ""}
+                                placeholder="0"
+                                onChange={(e) =>
+                                  handlePriceChange(
+                                    si.id,
+                                    Math.max(0, parseInt(e.target.value || "0", 10))
+                                  )
+                                }
+                                title="Nhấp để nhập hoặc điều chỉnh đơn giá tham khảo"
+                                className="w-24 px-2 py-1.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-300 focus:border-emerald-500 rounded-xl text-right text-xs font-bold font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                              />
+                              <span className="text-[11px] text-slate-400 font-medium">đ</span>
+                            </div>
+                          </td>
+
+                          {/* 6. Cột Thành tiền (VNĐ) */}
+                          <td className="px-3 py-3 text-right whitespace-nowrap font-mono font-bold text-sm text-slate-900">
+                            {formatMoney(lineTotal)}
+                          </td>
+
+                          {/* 7. Cột Dự kiến Phân bổ & Mua sắm */}
+                          <td className="px-4 py-3">
+                            <div className="space-y-1 text-xs">
+                              {isNewProposal ? (
+                                <div className="inline-flex items-center gap-1.5 text-indigo-700 font-bold bg-indigo-50/80 px-2.5 py-1.5 rounded-xl border border-indigo-100">
+                                  <PackageMinus className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                                  <span>100% Cần mua mới: {shortfallPreview} {si.unit}</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-1.5 text-emerald-700 font-bold">
+                                    <PackageCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                    <span>Lấy từ kho: {allocatedPreview} {si.unit}</span>
+                                  </div>
+                                  {shortfallPreview > 0 && (
+                                    <div className="flex items-center gap-1.5 text-amber-700 font-bold">
+                                      <PackageMinus className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                      <span>Cần mua thêm: {shortfallPreview} {si.unit}</span>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 8. Nút Xóa */}
+                          <td className="px-3 py-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(si.id)}
+                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                              title="Xóa món này"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Thanh Tổng Hợp Tạm Tính (Temporary Total Summary Box) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50/90 via-teal-50/70 to-slate-50 border border-emerald-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs animate-in fade-in">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-600 font-semibold">📦 Tổng mặt hàng:</span>
+                    <span className="font-bold font-mono text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                      {totalItemCount} món
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-600 font-semibold">🔢 Tổng SL xin:</span>
+                    <span className="font-bold font-mono text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                      {totalRequestedQty}
+                    </span>
+                  </div>
+                  <div className="hidden md:flex items-center gap-2 text-xs">
+                    <span className="text-emerald-700 font-semibold bg-emerald-100/80 px-2.5 py-1 rounded-lg border border-emerald-200">
+                      Kho cấp: <strong>{totalAllocatedQty}</strong>
+                    </span>
+                    {totalShortfallQty > 0 && (
+                      <span className="text-amber-700 font-semibold bg-amber-100/80 px-2.5 py-1 rounded-lg border border-amber-200">
+                        Cần mua thêm: <strong>{totalShortfallQty}</strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 self-end sm:self-auto bg-white px-4 py-2.5 rounded-xl border border-emerald-200/80 shadow-xs">
+                  <div className="text-right">
+                    <div className="flex items-center justify-end gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      <Calculator className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Tổng kinh phí tạm tính</span>
+                    </div>
+                    <div className="text-lg sm:text-2xl font-black text-emerald-700 font-mono tracking-tight">
+                      {formatMoney(totalEstimatedCost)}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
