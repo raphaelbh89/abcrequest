@@ -63,21 +63,45 @@ async function handleReceive(req: NextRequest, user: any, context?: any) {
       let updatedItem: any;
 
       if (!proposal.itemId) {
-        // 1. Tạo mặt hàng mới vào kho nếu là đề xuất mua mới
-        const itemName = proposal.proposedName || "Mặt hàng mua mới";
-        updatedItem = await tx.item.create({
-          data: {
-            name: itemName,
-            nameNormalized: normalizeVietnamese(itemName),
-            unit: proposal.proposedUnit || matchingReqItem?.proposedUnit || "cái",
-            category: "hoc_tap",
-            quantity: recvQty,
-            minStock: 5,
-            price: inputPrice !== undefined ? inputPrice : matchingReqItem?.proposedPrice || null,
-            imageUrl: matchingReqItem?.proposedImageUrl || null,
+        const itemName = (proposal.proposedName || matchingReqItem?.proposedName || "Mặt hàng mua mới").trim();
+        const normalizedName = normalizeVietnamese(itemName);
+
+        // Kiểm tra xem đã có mặt hàng trùng tên trong kho chưa
+        const existingItem = await tx.item.findFirst({
+          where: {
+            OR: [
+              { name: { equals: itemName } },
+              { nameNormalized: { equals: normalizedName } },
+            ],
           },
         });
-        targetItemId = updatedItem.id;
+
+        if (existingItem) {
+          // Đã có sẵn -> Cộng dồn số lượng và cập nhật giá vào mặt hàng sẵn có, chống tạo dòng trùng lặp
+          targetItemId = existingItem.id;
+          updatedItem = await tx.item.update({
+            where: { id: targetItemId },
+            data: {
+              quantity: { increment: recvQty },
+              ...(inputPrice !== undefined ? { price: inputPrice } : {}),
+            },
+          });
+        } else {
+          // Chưa có -> Tạo mặt hàng mới vào kho
+          updatedItem = await tx.item.create({
+            data: {
+              name: itemName,
+              nameNormalized: normalizedName,
+              unit: proposal.proposedUnit || matchingReqItem?.proposedUnit || "cái",
+              category: "hoc_tap",
+              quantity: recvQty,
+              minStock: 5,
+              price: inputPrice !== undefined ? inputPrice : matchingReqItem?.proposedPrice || null,
+              imageUrl: matchingReqItem?.proposedImageUrl || null,
+            },
+          });
+          targetItemId = updatedItem.id;
+        }
       } else {
         targetItemId = proposal.itemId;
         // 1. Cộng dồn số lượng tồn kho vật lý và cập nhật giá mới (nếu có)
@@ -106,7 +130,7 @@ async function handleReceive(req: NextRequest, user: any, context?: any) {
         },
       });
 
-      // 3. Cập nhật trạng thái đề xuất mua thành da_nhap_kho
+      // 3. Cập nhật trạng thái đề xuất mua thành da_nhap_kho và gắn targetItemId
       const updatedProposal = await tx.purchaseProposal.update({
         where: { id: proposal.id },
         data: {

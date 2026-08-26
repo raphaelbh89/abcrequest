@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireRole } from "@/lib/auth-guards";
 import { computeAvailableStock } from "@/lib/allocation";
 import { normalizeVietnamese } from "@/lib/search";
+import { mergeDuplicateItems } from "@/lib/deduplicate-items";
 
 // GET /api/items - Anyone logged in can view items with real-time available & reserved quantities
 export const GET = requireAuth(async (req: NextRequest) => {
@@ -11,6 +12,9 @@ export const GET = requireAuth(async (req: NextRequest) => {
     const search = searchParams.get("search") || "";
     const category = searchParams.get("category") || "";
     const lowStock = searchParams.get("lowStock") === "true";
+
+    // Tự động quét và hợp nhất các mặt hàng trùng lặp tên
+    await mergeDuplicateItems();
 
     const whereClause: any = {};
 
@@ -94,16 +98,65 @@ export const POST = requireRole(["admin", "manager", "stocker"], async (req: Nex
       );
     }
 
+    const trimmedName = String(name).trim();
+    const normalizedName = normalizeVietnamese(trimmedName);
     const qty = Math.max(0, parseInt(quantity || "0", 10));
     const minStk = Math.max(0, parseInt(minStock || "0", 10));
     const prc = price !== undefined && price !== null && price !== "" ? parseFloat(price) : null;
 
+    // Kiểm tra xem mặt hàng đã tồn tại trong kho chưa (chống trùng lặp)
+    const existingItem = await prisma.item.findFirst({
+      where: {
+        OR: [
+          { name: { equals: trimmedName } },
+          { nameNormalized: { equals: normalizedName } },
+        ],
+      },
+    });
+
+    if (existingItem) {
+      // Đã tồn tại -> Cập nhật và cộng dồn số lượng, không tạo thêm dòng mới
+      const updatedItem = await prisma.$transaction(async (tx) => {
+        const item = await tx.item.update({
+          where: { id: existingItem.id },
+          data: {
+            quantity: { increment: qty },
+            minStock: minStk > 0 ? minStk : existingItem.minStock,
+            price: prc !== null ? prc : existingItem.price,
+            location: location ? String(location).trim() : existingItem.location,
+            imageUrl: imageUrl ? String(imageUrl).trim() : existingItem.imageUrl,
+          },
+        });
+
+        if (qty > 0) {
+          await tx.stockTransaction.create({
+            data: {
+              itemId: item.id,
+              type: "nhap_kho",
+              quantityChange: qty,
+              referenceId: item.id,
+              performedBy: user.id,
+              note: `Cộng dồn số lượng vào mặt hàng đã có sẵn (Thêm +${qty} ${item.unit})`,
+            },
+          });
+        }
+
+        return item;
+      });
+
+      return NextResponse.json({
+        message: `Mặt hàng "${existingItem.name}" đã tồn tại trong kho. Đã tự động cộng dồn +${qty} ${existingItem.unit} và cập nhật thông tin.`,
+        item: updatedItem,
+        isExisting: true,
+      });
+    }
+
+    // Chưa tồn tại -> Tạo mới hoàn toàn
     const newItem = await prisma.$transaction(async (tx) => {
-      const trimmedName = String(name).trim();
       const item = await tx.item.create({
         data: {
           name: trimmedName,
-          nameNormalized: normalizeVietnamese(trimmedName),
+          nameNormalized: normalizedName,
           category: String(category).trim(),
           unit: String(unit).trim(),
           quantity: qty,
@@ -133,6 +186,7 @@ export const POST = requireRole(["admin", "manager", "stocker"], async (req: Nex
     return NextResponse.json({
       message: "Thêm mặt hàng mới thành công",
       item: newItem,
+      isExisting: false,
     });
   } catch (error) {
     console.error("POST /api/items error:", error);

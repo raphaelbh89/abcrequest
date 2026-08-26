@@ -49,8 +49,13 @@
   - Hiển thị trực quan **Tổng tiền nhập** ($SL\ thực\ nhận \times Đơn\ giá\ mua$) ngay khi nhập liệu.
   - Tự động cập nhật đơn giá mới vào danh mục kho (`Item.price`), gán vào món mới tạo và ghi chú chi tiết đơn giá trong nhật ký biến động kho (`StockTransaction`).
 
+- **Cơ Chế Tự Động Quét & Hợp Nhất Mặt Hàng Trùng Lặp Trong Kho (Auto-Deduplication Engine)**
+  - Xử lý triệt để nguyên nhân tạo dòng trùng lặp: Khi nhập kho từ đề xuất mua mới hoặc tạo thủ công, hệ thống tự động kiểm tra xem đã có món đồ dùng cùng tên/tên chuẩn hóa trong kho chưa.
+  - Nếu đã có sẵn: Tự động cộng dồn số lượng ($10 + 1 = 11$), cập nhật đơn giá mới nhất ($25.000\text{ đ}$) và giữ nguyên hình ảnh, không sinh thêm dòng mới.
+  - Tự động chạy quét dọn dẹp và hợp nhất (`mergeDuplicateItems`) mỗi khi mở danh mục kho, re-link toàn bộ lịch sử giao dịch và phiếu yêu cầu liên quan.
+
 - **Toàn Vẹn Dữ Liệu & Kiểm Thử Tự Động Toàn Diện (Testing Protocol 100% Pass)**
-  - Đạt **84/84 test cases trong 20 test suites PASS 100%** bao gồm toàn bộ luồng tải lên logo, định dạng Excel mới, AI, phân quyền, tồn kho, duyệt đơn và stress test SQLite.
+  - Đạt **85/85 test cases trong 21 test suites PASS 100%** bao gồm toàn bộ luồng tải lên logo, định dạng Excel mới, AI, phân quyền, tự động hợp nhất mặt hàng trùng lặp, tồn kho, duyệt đơn và stress test SQLite.
 
 ---
 
