@@ -39,6 +39,11 @@
   - Thêm 2 cột **`Đơn giá (VNĐ)`** (cho phép xem và chỉnh sửa linh hoạt) và **`Thành tiền`** (tự động tính $SL \times Đơn\ giá$) vào bảng đồ dùng được chọn.
   - Tích hợp **Thanh Tổng Hợp Tạm Tính (Temporary Summary Bar)** ngay dưới bảng: tự động thống kê *Tổng số mặt hàng*, *Tổng số lượng xin*, *Số lượng lấy từ kho*, *Số lượng cần mua thêm*, và **Tổng kinh phí tạm tính (VNĐ)** nổi bật với phông chữ lớn và biểu tượng máy tính.
 
+- **Hiển Thị Dự Toán Kinh Phí & Giá Tạm Tính Tại Module Duyệt Yêu Cầu (`/requests`)**
+  - Bổ sung chip **`Dự toán kinh phí: xxx,xxx đ`** ngay trên thẻ tiêu đề của mỗi phiếu yêu cầu giúp Ban Giám Hiệu nắm bắt ngân sách ngay lập tức.
+  - Thêm 2 cột **`Đơn giá (VNĐ)`** và **`Thành tiền`** trong bảng chi tiết từng món đồ dùng của phiếu yêu cầu.
+  - Bổ sung dòng chân bảng **Tổng cộng & Dự toán chi tiết**: thống kê tổng kinh phí của toàn đơn, tổng SL xin, SL kho cấp sẵn và tách riêng khoản **Kinh phí mua sắm phát sinh**.
+
 - **Toàn Vẹn Dữ Liệu & Kiểm Thử Tự Động Toàn Diện (Testing Protocol 100% Pass)**
   - Đạt **84/84 test cases trong 20 test suites PASS 100%** bao gồm toàn bộ luồng tải lên logo, định dạng Excel mới, AI, phân quyền, tồn kho, duyệt đơn và stress test SQLite.
 

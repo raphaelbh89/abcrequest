@@ -24,6 +24,8 @@ import {
   RotateCcw,
   PackagePlus,
   ExternalLink,
+  Coins,
+  Calculator,
 } from "lucide-react";
 import { RejectModal } from "./RejectModal";
 import { ApproveModal } from "./ApproveModal";
@@ -47,6 +49,7 @@ interface RequestItemData {
     name: string;
     unit: string;
     category: string;
+    price?: number | null;
   } | null;
 }
 
@@ -80,6 +83,14 @@ interface RequestListProps {
   user: UserInfo;
 }
 
+const TABS = [
+  { key: "pending", label: "Chờ duyệt" },
+  { key: "approved", label: "Đã duyệt" },
+  { key: "rejected", label: "Từ chối" },
+  { key: "cancelled", label: "Đã hủy" },
+  { key: "all", label: "Tất cả" },
+];
+
 export function RequestList({ user }: RequestListProps) {
   const [requests, setRequests] = useState<RequestData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +105,13 @@ export function RequestList({ user }: RequestListProps) {
   // Reject Modal state for whole request rejection
   const [rejectTarget, setRejectTarget] = useState<RequestData | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  const getTabCount = (tabKey: string) => {
+    if (tabKey === statusTab) return requests.length;
+    return 0;
+  };
+
+  const filteredRequests = requests;
 
   // Modal tạo mặt hàng mới từ dòng đề xuất
   const [createItemModalOpen, setCreateItemModalOpen] = useState(false);
@@ -261,49 +279,59 @@ export function RequestList({ user }: RequestListProps) {
   // Quyền xét duyệt & quản lý yêu cầu: Admin & Quản lý (Manager)
   const isAdmin = ["admin", "manager"].includes(user.role);
 
-  const tabs = [
-    { id: "pending", label: "Chờ duyệt" },
-    { id: "approved", label: "Đã duyệt" },
-    { id: "rejected", label: "Từ chối" },
-    { id: "cancelled", label: "Đã hủy" },
-    { id: "all", label: "Tất cả" },
-  ];
+  const formatMoney = (amount: number) => {
+    return (amount || 0).toLocaleString("vi-VN") + " đ";
+  };
 
   return (
     <div className="space-y-6">
-      {/* Controls and Status Tabs */}
-      <div className="glass-panel rounded-3xl p-5 border border-slate-200/80 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-white/90">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
-          {tabs.map((tab) => {
-            const isActive = statusTab === tab.id;
+      {/* Tab Navigation and Actions Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        {/* Status Filter Tabs */}
+        <div className="flex items-center gap-1 p-1 bg-slate-100/80 rounded-2xl border border-slate-200/60 overflow-x-auto max-w-full">
+          {TABS.map((tab) => {
+            const count = getTabCount(tab.key);
+            const isActive = statusTab === tab.key;
             return (
               <button
-                key={tab.id}
-                onClick={() => setStatusTab(tab.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                key={tab.key}
+                onClick={() => setStatusTab(tab.key)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                   isActive
-                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-600/20"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
                 }`}
               >
-                {tab.label}
+                <span>{tab.label}</span>
+                {count > 0 && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${
+                      isActive
+                        ? "bg-emerald-700/60 text-white"
+                        : "bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Right Buttons: Refresh & New Request */}
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <button
             onClick={fetchRequests}
-            className="flex items-center justify-center p-2.5 text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-50 rounded-xl border border-slate-200 transition-colors cursor-pointer shadow-xs"
-            title="Làm mới dữ liệu"
+            title="Làm mới danh sách"
+            className="p-2.5 text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-50 rounded-xl border border-slate-200 transition-colors shadow-2xs cursor-pointer"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-emerald-600" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           </button>
 
           <Link
             href="/requests/new"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Tạo yêu cầu mới</span>
@@ -311,33 +339,35 @@ export function RequestList({ user }: RequestListProps) {
         </div>
       </div>
 
-      {/* Requests List */}
+      {/* Requests List Cards */}
       {loading ? (
-        <div className="glass-panel rounded-3xl p-12 border border-slate-200/80 text-center space-y-3 bg-white/80">
-          <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs text-slate-500 font-medium">Đang tải danh sách yêu cầu...</p>
+        <div className="space-y-4">
+          {[1, 2, 3].map((n) => (
+            <div
+              key={n}
+              className="h-28 rounded-3xl bg-slate-100/70 animate-pulse border border-slate-200/50"
+            />
+          ))}
         </div>
-      ) : requests.length === 0 ? (
-        <div className="glass-panel rounded-3xl p-12 border border-slate-200/80 text-center space-y-4 bg-white/80">
-          <div className="w-14 h-14 mx-auto rounded-3xl bg-slate-100 flex items-center justify-center text-slate-400">
-            <FileText className="w-7 h-7" />
+      ) : filteredRequests.length === 0 ? (
+        <div className="p-12 text-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 space-y-3">
+          <div className="p-3 bg-slate-100 rounded-2xl w-fit mx-auto text-slate-400">
+            <FileText className="w-8 h-8" />
           </div>
-          <div className="space-y-1">
-            <h3 className="text-base font-bold text-slate-800">Không tìm thấy yêu cầu nào</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Chưa có phiếu yêu cầu đồ dùng nào trong mục này.
-            </p>
-          </div>
-          <Link
-            href="/requests/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-emerald-600" /> Tạo yêu cầu đầu tiên
-          </Link>
+          <h3 className="text-base font-bold text-slate-800">
+            Không có yêu cầu đồ dùng nào
+          </h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            {statusTab === "all"
+              ? "Hiện chưa có phiếu yêu cầu nào được tạo trong hệ thống."
+              : `Không có phiếu yêu cầu nào ở trạng thái "${
+                  TABS.find((t) => t.key === statusTab)?.label
+                }".`}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {requests.map((req) => {
+          {filteredRequests.map((req) => {
             const isExpanded = expandedId === req.id;
             const formattedCreatedDate = new Date(req.createdAt).toLocaleDateString("vi-VN");
             const formattedNeededDate = new Date(req.neededDate).toLocaleDateString("vi-VN");
@@ -351,6 +381,14 @@ export function RequestList({ user }: RequestListProps) {
 
             const totalAllocated = activeItems.reduce((acc, i) => acc + i.allocatedQty, 0);
             const totalShortfall = activeItems.reduce((acc, i) => acc + i.shortfallQty, 0);
+            const totalEstimatedCost = activeItems.reduce(
+              (acc, i) => acc + (i.requestedQty || 0) * (i.proposedPrice ?? i.item?.price ?? 0),
+              0
+            );
+            const totalPurchaseCost = activeItems.reduce(
+              (acc, i) => acc + (i.shortfallQty || 0) * (i.proposedPrice ?? i.item?.price ?? 0),
+              0
+            );
 
             return (
               <div
@@ -382,7 +420,7 @@ export function RequestList({ user }: RequestListProps) {
                       </span>
                     </div>
 
-                    {/* Stock Allocation Summary Chips */}
+                    {/* Stock Allocation & Estimated Cost Summary Chips */}
                     <div className="flex items-center gap-2 pt-1 flex-wrap text-[11px] font-semibold">
                       <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                         <PackageCheck className="w-3 h-3 text-emerald-600" />
@@ -394,6 +432,10 @@ export function RequestList({ user }: RequestListProps) {
                           Thiếu cần mua: {totalShortfall} món
                         </span>
                       )}
+                      <span className="px-2.5 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-200 flex items-center gap-1 font-mono font-bold">
+                        <Calculator className="w-3 h-3 text-teal-600" />
+                        Dự toán kinh phí: {formatMoney(totalEstimatedCost)}
+                      </span>
                       {rejectedThisReq.length > 0 && (
                         <span className="px-2.5 py-0.5 rounded-md bg-rose-50 text-rose-800 border border-rose-200 flex items-center gap-1">
                           <Ban className="w-3 h-3 text-rose-600" />
@@ -489,9 +531,11 @@ export function RequestList({ user }: RequestListProps) {
                           <tr>
                             <th className="px-4 py-3">Đồ dùng</th>
                             <th className="px-4 py-3">Phân loại</th>
-                            <th className="px-4 py-3">SL Xin</th>
-                            <th className="px-4 py-3">SL Cấp từ kho</th>
-                            <th className="px-4 py-3">SL Cần mua thêm</th>
+                            <th className="px-3 py-3 text-center">SL Xin</th>
+                            <th className="px-3 py-3 text-right">Đơn giá (VNĐ)</th>
+                            <th className="px-3 py-3 text-right">Thành tiền</th>
+                            <th className="px-3 py-3 text-center">Cấp từ kho</th>
+                            <th className="px-3 py-3 text-center">Cần mua thêm</th>
                             <th className="px-4 py-3">Trạng thái phân bổ</th>
                             {isAdmin && req.status === "pending" && (
                               <th className="px-4 py-3 text-right">Thao tác duyệt</th>
@@ -509,6 +553,8 @@ export function RequestList({ user }: RequestListProps) {
                             const itemUnit = ri.item?.unit || ri.proposedUnit || "cái";
                             const itemCat = ri.item?.category === "hoc_tap" ? "Học tập" : ri.item?.category === "ngoai_khoa" ? "Ngoại khóa" : "Đề xuất mới";
                             const isFullyAllocated = ri.shortfallQty === 0 && !isNewProposal;
+                            const unitPrice = ri.proposedPrice ?? ri.item?.price ?? 0;
+                            const lineTotal = (ri.requestedQty || 0) * unitPrice;
 
                             return (
                               <tr
@@ -547,19 +593,35 @@ export function RequestList({ user }: RequestListProps) {
                                 <td className="px-4 py-3 text-slate-500">
                                   {itemCat}
                                 </td>
-                                <td className="px-4 py-3 font-mono font-bold">
+                                <td className="px-3 py-3 font-mono font-bold text-center">
                                   <span className={isMarkedRejected ? "line-through" : "text-slate-800"}>
                                     {ri.requestedQty} {itemUnit}
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 font-mono font-black">
+                                <td className="px-3 py-3 text-right font-mono whitespace-nowrap">
+                                  {unitPrice > 0 ? (
+                                    <span className={isMarkedRejected ? "line-through text-slate-400" : "text-slate-700"}>
+                                      {formatMoney(unitPrice)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400 italic text-[11px]">Chưa có giá</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-3 text-right font-mono font-bold whitespace-nowrap">
+                                  {isMarkedRejected ? (
+                                    <span className="line-through text-slate-400">0 đ</span>
+                                  ) : (
+                                    <span className="text-slate-900">{formatMoney(lineTotal)}</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-3 font-mono font-black text-center whitespace-nowrap">
                                   {isMarkedRejected ? (
                                     <span className="text-slate-400">0 {itemUnit}</span>
                                   ) : (
                                     <span className="text-emerald-700">{ri.allocatedQty} {itemUnit}</span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 font-mono font-black">
+                                <td className="px-3 py-3 font-mono font-black text-center whitespace-nowrap">
                                   {isMarkedRejected ? (
                                     <span className="text-slate-400">0 {itemUnit}</span>
                                   ) : (
@@ -648,6 +710,35 @@ export function RequestList({ user }: RequestListProps) {
                             );
                           })}
                         </tbody>
+                        <tfoot className="bg-slate-50/90 border-t border-slate-200 font-bold text-xs">
+                          <tr>
+                            <td colSpan={2} className="px-4 py-3 text-slate-600">
+                              TỔNG CỘNG ({activeItems.length} MÓN HỢP LỆ):
+                            </td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-slate-800">
+                              {activeItems.reduce((acc, i) => acc + (i.requestedQty || 0), 0)}
+                            </td>
+                            <td className="px-3 py-3 text-right text-slate-500 font-medium">
+                              Tổng kinh phí:
+                            </td>
+                            <td className="px-3 py-3 text-right font-mono font-black text-emerald-700 text-sm whitespace-nowrap">
+                              {formatMoney(totalEstimatedCost)}
+                            </td>
+                            <td className="px-3 py-3 text-center font-mono font-black text-emerald-700">
+                              {totalAllocated}
+                            </td>
+                            <td className="px-3 py-3 text-center font-mono font-black text-amber-700">
+                              {totalShortfall}
+                            </td>
+                            <td colSpan={isAdmin && req.status === "pending" ? 2 : 1} className="px-4 py-3 text-right text-[11px] text-slate-500 font-normal">
+                              {totalPurchaseCost > 0 ? (
+                                <span>Kinh phí mua sắm: <strong className="font-mono text-amber-800">{formatMoney(totalPurchaseCost)}</strong></span>
+                              ) : (
+                                <span className="text-emerald-700 font-semibold">100% cấp từ kho sẵn có</span>
+                              )}
+                            </td>
+                          </tr>
+                        </tfoot>
                       </table>
                     </div>
                   </div>
