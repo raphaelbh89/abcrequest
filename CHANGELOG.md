@@ -44,6 +44,11 @@
   - Thêm 2 cột **`Đơn giá (VNĐ)`** và **`Thành tiền`** trong bảng chi tiết từng món đồ dùng của phiếu yêu cầu.
   - Bổ sung dòng chân bảng **Tổng cộng & Dự toán chi tiết**: thống kê tổng kinh phí của toàn đơn, tổng SL xin, SL kho cấp sẵn và tách riêng khoản **Kinh phí mua sắm phát sinh**.
 
+- **Bổ Sung Trường Nhập Giá Thực Tế Khi Nhập Kho Từ Đề Xuất Mua (`ReceiveModal.tsx`)**
+  - Thêm ô **`Đơn giá mua / Nhập giá (VNĐ)`** trong modal Xác nhận nhập kho, tự động điền giá đề xuất/giá tham khảo có sẵn.
+  - Hiển thị trực quan **Tổng tiền nhập** ($SL\ thực\ nhận \times Đơn\ giá\ mua$) ngay khi nhập liệu.
+  - Tự động cập nhật đơn giá mới vào danh mục kho (`Item.price`), gán vào món mới tạo và ghi chú chi tiết đơn giá trong nhật ký biến động kho (`StockTransaction`).
+
 - **Toàn Vẹn Dữ Liệu & Kiểm Thử Tự Động Toàn Diện (Testing Protocol 100% Pass)**
   - Đạt **84/84 test cases trong 20 test suites PASS 100%** bao gồm toàn bộ luồng tải lên logo, định dạng Excel mới, AI, phân quyền, tồn kho, duyệt đơn và stress test SQLite.
 

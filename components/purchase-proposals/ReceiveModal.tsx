@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, ArrowUpRight, CheckCircle2, PackageCheck } from "lucide-react";
+import { X, Loader2, PackageCheck, Coins } from "lucide-react";
 
 interface ProposalItemInfo {
   id: string;
@@ -10,9 +10,11 @@ interface ProposalItemInfo {
   status: string;
   proposedName?: string | null;
   proposedUnit?: string | null;
+  proposedPrice?: number | null;
   item?: {
     name: string;
     unit: string;
+    price?: number | null;
   } | null;
   sourceRequest: {
     purpose: string;
@@ -32,6 +34,7 @@ interface ReceiveModalProps {
 export function ReceiveModal({ isOpen, onClose, onSuccess, proposal }: ReceiveModalProps) {
   const [mounted, setMounted] = useState(false);
   const [receivedQty, setReceivedQty] = useState<number>(1);
+  const [price, setPrice] = useState<string>("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +46,8 @@ export function ReceiveModal({ isOpen, onClose, onSuccess, proposal }: ReceiveMo
   useEffect(() => {
     if (proposal && isOpen) {
       setReceivedQty(proposal.qty);
+      const initialPrice = proposal.item?.price ?? proposal.proposedPrice ?? "";
+      setPrice(initialPrice ? String(initialPrice) : "");
       setNote(`Nhập kho từ đề xuất mua (Chủ đề: "${proposal.sourceRequest?.purpose || "Mua sắm"}")`);
       setError(null);
     }
@@ -52,6 +57,8 @@ export function ReceiveModal({ isOpen, onClose, onSuccess, proposal }: ReceiveMo
 
   const itemName = proposal.item?.name || proposal.proposedName || "Món đề xuất mới";
   const itemUnit = proposal.item?.unit || proposal.proposedUnit || "cái";
+  const numericPrice = parseFloat(price) || 0;
+  const totalAmount = receivedQty * numericPrice;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,11 +72,14 @@ export function ReceiveModal({ isOpen, onClose, onSuccess, proposal }: ReceiveMo
     setLoading(true);
 
     try {
+      const parsedPrice = price.trim() !== "" && !isNaN(parseFloat(price)) ? Math.max(0, parseFloat(price)) : undefined;
+
       const res = await fetch(`/api/purchase-proposals/${proposal.id}/receive`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           receivedQty,
+          price: parsedPrice,
           note: note.trim() || undefined,
         }),
       });
@@ -108,7 +118,7 @@ export function ReceiveModal({ isOpen, onClose, onSuccess, proposal }: ReceiveMo
               <h2 className="text-lg font-bold text-slate-900">
                 Xác nhận Nhập kho
               </h2>
-              <p className="text-xs text-slate-500">Ghi nhận hàng mua về và cộng vào tồn kho</p>
+              <p className="text-xs text-slate-500">Ghi nhận hàng mua về, cập nhật giá & cộng tồn kho</p>
             </div>
           </div>
           <button
@@ -147,6 +157,37 @@ export function ReceiveModal({ isOpen, onClose, onSuccess, proposal }: ReceiveMo
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-bold"
               required
             />
+          </div>
+
+          {/* Trường Nhập Giá Mua Thực Tế */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <span>Đơn giá mua / Nhập giá (VNĐ)</span>
+              <span className="text-[10px] text-slate-400 font-normal lowercase">(cập nhật vào kho)</span>
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                min={0}
+                step={1000}
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="VD: 25000"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 focus:bg-white transition-all font-bold pr-10"
+              />
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                đ
+              </span>
+            </div>
+
+            {numericPrice > 0 && (
+              <div className="flex items-center justify-between pt-1.5 px-1 text-xs">
+                <span className="text-slate-500 font-medium">Tổng tiền nhập ({receivedQty} {itemUnit}):</span>
+                <span className="font-mono font-bold text-emerald-700 text-sm">
+                  {totalAmount.toLocaleString("vi-VN")} đ
+                </span>
+              </div>
+            )}
           </div>
 
           <div>

@@ -497,7 +497,13 @@ export function PurchaseProposalList() {
                                             (prop.itemId && prop.itemId === it.itemId) ||
                                             (prop.proposedName && prop.proposedName === it.itemName)
                                         );
-                                        if (p) setReceiveTarget(p);
+                                        if (p) {
+                                          setReceiveTarget({
+                                            ...p,
+                                            proposedPrice: p.proposedPrice ?? it.price ?? p.item?.price,
+                                            qty: it.pendingQty || p.qty,
+                                          });
+                                        }
                                       }}
                                       className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all cursor-pointer"
                                       title="Nhập kho bổ sung"

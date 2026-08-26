@@ -14,7 +14,7 @@ async function handleReceive(req: NextRequest, user: any, context?: any) {
     }
 
     const body = await req.json();
-    const { receivedQty, note } = body;
+    const { receivedQty, price, note } = body;
 
     const recvQty = parseInt(receivedQty, 10);
     if (isNaN(recvQty) || recvQty <= 0) {
@@ -23,6 +23,11 @@ async function handleReceive(req: NextRequest, user: any, context?: any) {
         { status: 400 }
       );
     }
+
+    const inputPrice =
+      price !== undefined && price !== null && !isNaN(parseFloat(price))
+        ? Math.max(0, parseFloat(price))
+        : undefined;
 
     const proposal = await prisma.purchaseProposal.findUnique({
       where: { id: proposalId },
@@ -68,18 +73,19 @@ async function handleReceive(req: NextRequest, user: any, context?: any) {
             category: "hoc_tap",
             quantity: recvQty,
             minStock: 5,
-            price: matchingReqItem?.proposedPrice || null,
+            price: inputPrice !== undefined ? inputPrice : matchingReqItem?.proposedPrice || null,
             imageUrl: matchingReqItem?.proposedImageUrl || null,
           },
         });
         targetItemId = updatedItem.id;
       } else {
         targetItemId = proposal.itemId;
-        // 1. Cộng dồn số lượng tồn kho vật lý
+        // 1. Cộng dồn số lượng tồn kho vật lý và cập nhật giá mới (nếu có)
         updatedItem = await tx.item.update({
           where: { id: targetItemId },
           data: {
             quantity: { increment: recvQty },
+            ...(inputPrice !== undefined ? { price: inputPrice } : {}),
           },
         });
       }
@@ -94,6 +100,8 @@ async function handleReceive(req: NextRequest, user: any, context?: any) {
           performedBy: user.id,
           note: note
             ? String(note).trim()
+            : inputPrice !== undefined
+            ? `Nhập kho từ đề xuất mua (Đơn giá: ${inputPrice.toLocaleString("vi-VN")} đ)`
             : `Nhập kho từ đề xuất mua (Chủ đề: "${proposal.sourceRequest.purpose}")`,
         },
       });
@@ -128,6 +136,7 @@ async function handleReceive(req: NextRequest, user: any, context?: any) {
             itemId: targetItemId,
             allocatedQty: newAllocatedQty,
             shortfallQty: newShortfallQty,
+            ...(inputPrice !== undefined && !matchingReqItem.proposedPrice ? { proposedPrice: inputPrice } : {}),
           },
         });
       }
@@ -137,7 +146,9 @@ async function handleReceive(req: NextRequest, user: any, context?: any) {
 
     return NextResponse.json({
       success: true,
-      message: `Đã nhập kho +${recvQty} ${updatedResult.item.unit} cho mặt hàng "${updatedResult.item.name}"`,
+      message: `Đã nhập kho +${recvQty} ${updatedResult.item.unit} cho mặt hàng "${updatedResult.item.name}"${
+        inputPrice !== undefined ? ` (Đơn giá: ${inputPrice.toLocaleString("vi-VN")} đ)` : ""
+      }`,
       proposal: updatedResult.proposal,
       item: updatedResult.item,
     });

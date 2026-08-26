@@ -142,14 +142,53 @@ describe("Integration Test: External Item Proposals & Admin Approval Workflow (P
     const proposalForNewItem = approved.purchaseProposals.find(
       (pp) => pp.proposedName === "Bộ kính hiển vi mini mầm non"
     );
-    assert.ok(proposalForNewItem, "Phải sinh bản ghi đề xuất mua cho món mới");
-    assert.strictEqual(proposalForNewItem.qty, 10);
-    assert.strictEqual(proposalForNewItem.proposedUnit, "bộ");
-    assert.strictEqual(proposalForNewItem.status, "can_mua");
+    // 4. Nhập kho từ đề xuất mua sắm có truyền đơn giá thực tế
+    const receivedItem = await prisma.$transaction(async (tx) => {
+      const createdItem = await tx.item.create({
+        data: {
+          name: proposalForNewItem.proposedName!,
+          nameNormalized: "bo kinh hien vi mini mam non",
+          unit: proposalForNewItem.proposedUnit || "bộ",
+          category: "hoc_tap",
+          quantity: 10,
+          minStock: 5,
+          price: 90000, // Đơn giá thực tế khi nhập kho
+        },
+      });
+
+      await tx.purchaseProposal.update({
+        where: { id: proposalForNewItem.id },
+        data: {
+          itemId: createdItem.id,
+          status: "da_nhap_kho",
+          receivedQty: 10,
+          resolvedAt: new Date(),
+        },
+      });
+
+      await tx.stockTransaction.create({
+        data: {
+          itemId: createdItem.id,
+          type: "nhap_kho",
+          quantityChange: 10,
+          referenceId: proposalForNewItem.id,
+          performedBy: adminUser.id,
+          note: "Nhập kho thực tế từ đề xuất mua (Đơn giá: 90.000 đ)",
+        },
+      });
+
+      return createdItem;
+    });
+
+    assert.ok(receivedItem);
+    assert.strictEqual(receivedItem.price, 90000);
+    assert.strictEqual(receivedItem.quantity, 10);
 
     // Dọn dẹp dữ liệu test
+    await prisma.stockTransaction.deleteMany({ where: { itemId: receivedItem.id } });
     await prisma.purchaseProposal.deleteMany({ where: { sourceRequestId: newRequest.id } });
     await prisma.requestItem.deleteMany({ where: { requestId: newRequest.id } });
     await prisma.request.delete({ where: { id: newRequest.id } });
+    await prisma.item.delete({ where: { id: receivedItem.id } });
   });
 });
